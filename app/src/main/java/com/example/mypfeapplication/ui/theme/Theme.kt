@@ -5,9 +5,7 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 
 @Composable
-fun MyPFEApplicationTheme(
-    content: @Composable () -> Unit
-) {
+fun MyPFEApplicationTheme(content: @Composable () -> Unit) {
     MaterialTheme(
         colorScheme = lightColorScheme(),
         content = content
