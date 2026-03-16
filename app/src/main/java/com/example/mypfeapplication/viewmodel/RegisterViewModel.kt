@@ -9,7 +9,7 @@ import com.example.mypfeapplication.model.AuthData
 import com.example.mypfeapplication.repository.UserRepository
 import kotlinx.coroutines.launch
 
-class LoginViewModel(application: Application) : AndroidViewModel(application) {
+class RegisterViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository = UserRepository(application)  // ✅ contexte passé ici
 
@@ -22,15 +22,21 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
     private val _error = MutableLiveData<String?>()
     val error: LiveData<String?> = _error
 
-    fun login(email: String, password: String) {
+    fun register(
+        username: String,
+        email: String,
+        password: String,
+        firstName: String? = null,
+        lastName: String? = null
+    ) {
         viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
-            val result = repository.login(email, password)
+            val result = repository.register(username, email, password, firstName, lastName)
             if (result != null) {
                 _authData.value = result
             } else {
-                _error.value = "Invalid email or password"
+                _error.value = "Registration failed. Please try again."
             }
             _isLoading.value = false
         }
