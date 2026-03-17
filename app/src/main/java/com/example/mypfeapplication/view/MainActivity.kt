@@ -18,8 +18,7 @@ val PurpleMain = Color(0xFF5C5EDD)
 
 class MainActivity : ComponentActivity() {
 
-    private val loginViewModel: LoginViewModel by viewModels()
-    private val registerViewModel: RegisterViewModel by viewModels()
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -38,10 +37,8 @@ class MainActivity : ComponentActivity() {
                         onSignUpClick = { navController.navigate("register") }
                     )
                 }
-
                 composable("login") {
                     LoginScreen(
-                        viewModel = loginViewModel,
                         onLoginSuccess = {
                             navController.navigate("home") {
                                 popUpTo("welcome") { inclusive = true }
@@ -50,10 +47,8 @@ class MainActivity : ComponentActivity() {
                         onSignUpClick = { navController.navigate("register") }
                     )
                 }
-
                 composable("register") {
                     RegisterScreen(
-                        viewModel = registerViewModel,
                         onRegisterSuccess = {
                             navController.navigate("home") {
                                 popUpTo("welcome") { inclusive = true }
@@ -62,6 +57,8 @@ class MainActivity : ComponentActivity() {
                         onBackToLogin = { navController.navigate("login") }
                     )
                 }
+
+
 
                 composable("home") {
                     HomeScreen(

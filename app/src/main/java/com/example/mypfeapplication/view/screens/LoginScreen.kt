@@ -15,12 +15,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.mypfeapplication.view.PurpleMain
 import com.example.mypfeapplication.viewmodel.LoginViewModel
-
+import androidx.lifecycle.viewmodel.compose.viewModel
 @Composable
 fun LoginScreen(
-    viewModel: LoginViewModel,
-    onLoginSuccess: () -> Unit = {},
-    onSignUpClick: () -> Unit = {}
+    viewModel: LoginViewModel = viewModel(),
+    onLoginSuccess: () -> Unit,
+    onSignUpClick: () -> Unit
 ) {
     val authData by viewModel.authData.observeAsState()
     val isLoading by viewModel.isLoading.observeAsState(false)

@@ -19,11 +19,13 @@ import com.example.mypfeapplication.view.PurpleMain
 import com.example.mypfeapplication.view.components.SocialButton
 import com.example.mypfeapplication.viewmodel.RegisterViewModel
 
+import androidx.lifecycle.viewmodel.compose.viewModel
+
 @Composable
 fun RegisterScreen(
-    viewModel: RegisterViewModel,
-    onRegisterSuccess: () -> Unit = {},
-    onBackToLogin: () -> Unit = {}
+    viewModel: RegisterViewModel = viewModel(),
+    onRegisterSuccess: () -> Unit,
+    onBackToLogin: () -> Unit
 ) {
     val authData by viewModel.authData.observeAsState()
     val isLoading by viewModel.isLoading.observeAsState(false)
