@@ -17,7 +17,6 @@ class UserRepository(private val context: Context) {
             )
             if (response.isSuccessful) {
                 val data = response.body()?.data
-                // ✅ Sauvegarde token ici dans le Repository
                 data?.token?.let { token ->
                     sharedPref.edit().putString("token", token).apply()
                 }
@@ -47,7 +46,6 @@ class UserRepository(private val context: Context) {
             )
             if (response.isSuccessful) {
                 val data = response.body()?.data
-                // ✅ Sauvegarde token ici dans le Repository
                 data?.token?.let { token ->
                     sharedPref.edit().putString("token", token).apply()
                 }
@@ -60,6 +58,16 @@ class UserRepository(private val context: Context) {
 
     fun getToken(): String? {
         return sharedPref.getString("token", null)
+    }
+
+    fun getUsername(): String {
+        return try {
+            val token = getToken() ?: return "User"
+            val jwt = com.auth0.android.jwt.JWT(token)
+            jwt.getClaim("username").asString() ?: "User"
+        } catch (e: Exception) {
+            "User"
+        }
     }
 
     fun logout() {

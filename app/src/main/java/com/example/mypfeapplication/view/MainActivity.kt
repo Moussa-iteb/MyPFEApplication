@@ -3,22 +3,18 @@ package com.example.mypfeapplication.view
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.viewModels
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.mypfeapplication.repository.UserRepository
 import com.example.mypfeapplication.view.screens.*
-import com.example.mypfeapplication.viewmodel.LoginViewModel
-import com.example.mypfeapplication.viewmodel.RegisterViewModel
 
 val PurpleMain = Color(0xFF5C5EDD)
 
 class MainActivity : ComponentActivity() {
-
-
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -37,6 +33,7 @@ class MainActivity : ComponentActivity() {
                         onSignUpClick = { navController.navigate("register") }
                     )
                 }
+
                 composable("login") {
                     LoginScreen(
                         onLoginSuccess = {
@@ -47,6 +44,7 @@ class MainActivity : ComponentActivity() {
                         onSignUpClick = { navController.navigate("register") }
                     )
                 }
+
                 composable("register") {
                     RegisterScreen(
                         onRegisterSuccess = {
@@ -58,12 +56,14 @@ class MainActivity : ComponentActivity() {
                     )
                 }
 
-
-
+                // ✅ Un seul composable("home") !
                 composable("home") {
+                    val localRepository = UserRepository(LocalContext.current)
                     HomeScreen(
+                        username = localRepository.getUsername(),
+                        hasBike = false, // ← false = sans vélo / true = avec vélo
                         onLogout = {
-                            repository.logout()
+                            localRepository.logout()
                             navController.navigate("welcome") {
                                 popUpTo("home") { inclusive = true }
                             }

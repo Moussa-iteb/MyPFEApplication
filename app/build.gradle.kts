@@ -51,6 +51,10 @@ dependencies {
     implementation("androidx.compose.runtime:runtime-livedata:1.6.1")
     // Navigation Compose
     implementation("androidx.navigation:navigation-compose:2.7.7")
+    // JWT decode
+    implementation("com.auth0.android:jwtdecode:2.0.2")
+    // Material Icons Extended
+    implementation("androidx.compose.material:material-icons-extended:1.6.1")
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
