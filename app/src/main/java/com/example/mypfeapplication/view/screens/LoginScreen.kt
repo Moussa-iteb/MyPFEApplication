@@ -13,14 +13,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.mypfeapplication.view.PurpleMain
 import com.example.mypfeapplication.viewmodel.LoginViewModel
-import androidx.lifecycle.viewmodel.compose.viewModel
+
 @Composable
 fun LoginScreen(
     viewModel: LoginViewModel = viewModel(),
     onLoginSuccess: () -> Unit,
-    onSignUpClick: () -> Unit
+    onSignUpClick: () -> Unit = {}
 ) {
     val authData by viewModel.authData.observeAsState()
     val isLoading by viewModel.isLoading.observeAsState(false)
@@ -42,7 +43,12 @@ fun LoginScreen(
     ) {
         Spacer(modifier = Modifier.height(60.dp))
 
-        Text(text = "Login", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+        Text(
+            text = "Login",
+            fontSize = 28.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color.Black
+        )
 
         Spacer(modifier = Modifier.height(32.dp))
 
@@ -101,15 +107,6 @@ fun LoginScreen(
                 CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White)
             } else {
                 Text(text = "Login", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
-            }
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Row(horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-            Text(text = "Don't have an account? ", color = Color.Gray, fontSize = 14.sp)
-            TextButton(onClick = onSignUpClick) {
-                Text(text = "Sign Up", color = PurpleMain, fontWeight = FontWeight.Bold, fontSize = 14.sp)
             }
         }
     }

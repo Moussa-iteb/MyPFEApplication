@@ -1,125 +1,134 @@
 package com.example.mypfeapplication.view.screens
 
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.List
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.QrCode
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.mypfeapplication.view.PurpleMain
+import com.example.mypfeapplication.R
 
-// ═══════════════════════════════
-// COULEURS
-// ═══════════════════════════════
-val GreenMain = Color(0xFF2ECC71)
-val GrayLight = Color(0xFFF5F5F5)
-val GrayText = Color(0xFF888888)
-
-// ═══════════════════════════════
-// HOME SCREEN PRINCIPALE
-// ═══════════════════════════════
 @Composable
 fun HomeScreen(
     username: String = "User",
     hasBike: Boolean = false,
-    onLogout: () -> Unit = {}
+    onLogout: () -> Unit = {},
+    onStartTrip: () -> Unit = {}
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
+    var showHistory by remember { mutableStateOf(false) }
 
-    Scaffold(
-        bottomBar = {
-            BottomNavigationBar(
-                selectedTab = selectedTab,
-                onTabSelected = { selectedTab = it }
+    if (showHistory) {
+        TripHistoryScreen(onBack = { showHistory = false })
+        return
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color(0xFFF0FBF6),
+                        Color(0xFFE8F4FD),
+                        Color(0xFFF0FBF6)
+                    )
+                )
             )
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val strokeColor = Color(0xFFD0E8F0)
+            val stroke = Stroke(width = 1f)
+            drawCircle(color = strokeColor, radius = size.width * 0.9f, style = stroke)
+            drawCircle(color = strokeColor, radius = size.width * 0.7f, style = stroke)
+            drawCircle(color = strokeColor, radius = size.width * 0.5f, style = stroke)
+            drawCircle(color = strokeColor, radius = size.width * 0.3f, style = stroke)
+            for (i in 0..8) {
+                val y = size.height * i / 8f
+                drawLine(color = strokeColor, start = Offset(0f, y), end = Offset(size.width, y), strokeWidth = 0.8f)
+            }
+            for (i in 0..5) {
+                val x = size.width * i / 5f
+                drawLine(color = strokeColor, start = Offset(x, 0f), end = Offset(x, size.height), strokeWidth = 0.5f)
+            }
         }
-    ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(GrayLight)
-                .padding(paddingValues)
-        ) {
-            HomeHeader(username = username)
 
-            when (selectedTab) {
-                0 -> if (hasBike) BikeAssociatedContent(username = username) else NoBikeContent()
-                1 -> ExploreContent()
-                2 -> MyTripsContent()
-                3 -> ProfileContent(onLogout = onLogout)
+        Scaffold(
+            containerColor = Color.Transparent,
+            bottomBar = {
+                BottomNavigationBar(
+                    selectedTab = selectedTab,
+                    onTabSelected = { selectedTab = it }
+                )
+            }
+        ) { paddingValues ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            ) {
+                HomeHeader(username = username)
+                when (selectedTab) {
+                    // ✅ onStartTrip est maintenant passé correctement
+                    0 -> if (hasBike) BikeAssociatedContent(
+                        username = username,
+                        onViewHistory = { showHistory = true },
+                        onStartTrip = onStartTrip
+                    ) else NoBikeContent()
+                    1 -> ExploreScreen()
+                    2 -> MyTripsScreen()
+                    3 -> ProfileScreen(username = username, onLogout = onLogout)
+                }
             }
         }
     }
 }
 
-// ═══════════════════════════════
-// HEADER
-// ═══════════════════════════════
 @Composable
 fun HomeHeader(username: String) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color.White)
+            .background(Color.Transparent)
             .padding(horizontal = 20.dp, vertical = 16.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            text = "SmartRide",
-            fontSize = 22.sp,
-            fontWeight = FontWeight.ExtraBold,
-            color = PurpleMain
-        )
-
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
+        Text(text = "SmartRide", fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = GreenMain)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Column(horizontalAlignment = Alignment.End) {
-                Text(
-                    text = username,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.Black
-                )
+                Text(text = username, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.Black)
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .background(GreenMain, CircleShape)
-                    )
+                    Box(modifier = Modifier.size(8.dp).background(GreenMain, CircleShape))
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(text = "Online", fontSize = 11.sp, color = GreenMain)
                 }
             }
             Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(PurpleMain),
+                modifier = Modifier.size(40.dp).clip(CircleShape).background(GreenMain),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = username.take(1).uppercase(),
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp
-                )
+                Text(text = username.take(1).uppercase(), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
             }
         }
     }
@@ -133,61 +142,58 @@ fun NoBikeContent() {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(24.dp),
+            .padding(horizontal = 20.dp)
+            .padding(bottom = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.SpaceBetween
     ) {
         Box(
             modifier = Modifier
-                .size(200.dp)
-                .background(Color(0xFFEEF0FF), RoundedCornerShape(24.dp)),
-            contentAlignment = Alignment.Center
+                .fillMaxWidth()
+                .fillMaxHeight(0.55f),
+            contentAlignment = Alignment.BottomCenter
         ) {
-            Text(text = "🚲", fontSize = 80.sp)
+            Image(
+                painter = painterResource(id = R.drawable.logoscan),
+                contentDescription = "Bike",
+                modifier = Modifier.fillMaxWidth().fillMaxHeight(),
+                contentScale = ContentScale.Fit
+            )
         }
 
-        Spacer(modifier = Modifier.height(32.dp))
-
-        Text(
-            text = "You don't have a bike\nassociated yet.",
-            fontSize = 22.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color.Black,
-            textAlign = TextAlign.Center
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        Text(
-            text = "Scan a bike to start your first trip",
-            fontSize = 15.sp,
-            color = GrayText,
-            textAlign = TextAlign.Center
-        )
-
-        Spacer(modifier = Modifier.height(40.dp))
-
-        Button(
-            onClick = { },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = PurpleMain)
-        ) {
-            Icon(
-                imageVector = Icons.Default.QrCode,
-                contentDescription = null,
-                tint = Color.White,
-                modifier = Modifier.size(22.dp)
-            )
-            Spacer(modifier = Modifier.width(10.dp))
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
-                text = "Scan QR Code",
-                fontSize = 16.sp,
+                text = "You don't have a bike\nassociated yet.",
+                fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.White
+                color = Color.Black,
+                textAlign = TextAlign.Center
             )
+            Spacer(modifier = Modifier.height(10.dp))
+            Text(
+                text = "Scan a bike to start your first trip",
+                fontSize = 15.sp,
+                color = GrayText,
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(32.dp))
+            Button(
+                onClick = { },
+                modifier = Modifier.fillMaxWidth().height(58.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = GreenMain)
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.ic_qr),
+                    contentDescription = null,
+                    modifier = Modifier.size(22.dp),
+                    contentScale = ContentScale.Fit,
+                    colorFilter = ColorFilter.tint(Color.White)
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(text = "Scan QR Code", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = Color.White)
+            }
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }
@@ -196,40 +202,30 @@ fun NoBikeContent() {
 // PAGE 2 — VÉLO ASSOCIÉ
 // ═══════════════════════════════
 @Composable
-fun BikeAssociatedContent(username: String = "User") {
+fun BikeAssociatedContent(
+    username: String = "User",
+    onViewHistory: () -> Unit = {},
+    onStartTrip: () -> Unit = {}   // ✅ paramètre ajouté
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .padding(20.dp)
     ) {
-        Text(
-            text = "Hello, $username!",
-            fontSize = 28.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color.Black
-        )
-        Text(
-            text = "Your ride is ready.",
-            fontSize = 15.sp,
-            color = GrayText
-        )
+        Text(text = "Hello, $username!", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+        Text(text = "Your ride is ready.", fontSize = 15.sp, color = GrayText)
 
         Spacer(modifier = Modifier.height(20.dp))
 
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            elevation = CardDefaults.cardElevation(6.dp)
+            colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.92f)),
+            elevation = CardDefaults.cardElevation(8.dp)
         ) {
             Column(modifier = Modifier.padding(20.dp)) {
-
-                Text(
-                    text = "Your Associated Bike",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.Black
-                )
+                Text(text = "Your Associated Bike", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.Black)
 
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -241,22 +237,21 @@ fun BikeAssociatedContent(username: String = "User") {
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
-                            modifier = Modifier
-                                .size(40.dp)
-                                .background(Color(0xFFEEF0FF), RoundedCornerShape(10.dp)),
+                            modifier = Modifier.size(42.dp).background(Color(0xFFEBF5FB), RoundedCornerShape(10.dp)),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text(text = "🚲", fontSize = 20.sp)
+                            Image(
+                                painter = painterResource(id = R.drawable.ic_cycle),
+                                contentDescription = null,
+                                modifier = Modifier.size(24.dp),
+                                contentScale = ContentScale.Fit,
+                                colorFilter = ColorFilter.tint(Color(0xFF3498DB))
+                            )
                         }
                         Spacer(modifier = Modifier.width(12.dp))
                         Column {
                             Text(text = "Bike ID", fontSize = 12.sp, color = GrayText)
-                            Text(
-                                text = "B-4815",
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.Black
-                            )
+                            Text(text = "B-4815", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color.Black)
                         }
                     }
                     Column(horizontalAlignment = Alignment.End) {
@@ -265,31 +260,30 @@ fun BikeAssociatedContent(username: String = "User") {
                     }
                 }
 
-                HorizontalDivider(modifier = Modifier.padding(vertical = 14.dp), color = Color(0xFFF0F0F0))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = Color(0xFFF0F0F0))
 
                 // Battery
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .background(Color(0xFFE8F8F0), RoundedCornerShape(10.dp)),
+                        modifier = Modifier.size(42.dp).background(Color(0xFFE8F8F0), RoundedCornerShape(10.dp)),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(text = "🔋", fontSize = 20.sp)
+                        Image(
+                            painter = painterResource(id = R.drawable.ic_battery),
+                            contentDescription = null,
+                            modifier = Modifier.size(24.dp),
+                            contentScale = ContentScale.Fit,
+                            colorFilter = ColorFilter.tint(GreenMain)
+                        )
                     }
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
                         Text(text = "Battery", fontSize = 12.sp, color = GrayText)
-                        Text(
-                            text = "87% Charged",
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.Black
-                        )
+                        Text(text = "87% Charged", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color.Black)
                     }
                 }
 
-                HorizontalDivider(modifier = Modifier.padding(vertical = 14.dp), color = Color(0xFFF0F0F0))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = Color(0xFFF0F0F0))
 
                 // Status
                 Row(
@@ -299,39 +293,25 @@ fun BikeAssociatedContent(username: String = "User") {
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
-                            modifier = Modifier
-                                .size(40.dp)
-                                .background(Color(0xFFE8F8F0), RoundedCornerShape(10.dp)),
+                            modifier = Modifier.size(42.dp).background(Color(0xFFE8F8F0), RoundedCornerShape(10.dp)),
                             contentAlignment = Alignment.Center
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(14.dp)
-                                    .background(GreenMain, CircleShape)
-                            )
+                            Box(modifier = Modifier.size(16.dp).background(GreenMain, CircleShape))
                         }
                         Spacer(modifier = Modifier.width(12.dp))
                         Column {
                             Text(text = "Status", fontSize = 12.sp, color = GrayText)
-                            Text(
-                                text = "Currently In Use",
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = GreenMain
-                            )
+                            Text(text = "Currently In Use", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = GreenMain)
                         }
                     }
                     Switch(
                         checked = true,
                         onCheckedChange = {},
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = Color.White,
-                            checkedTrackColor = GreenMain
-                        )
+                        colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = GreenMain)
                     )
                 }
 
-                HorizontalDivider(modifier = Modifier.padding(vertical = 14.dp), color = Color(0xFFF0F0F0))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = Color(0xFFF0F0F0))
 
                 // Last Location
                 Row(
@@ -339,38 +319,34 @@ fun BikeAssociatedContent(username: String = "User") {
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
                         Box(
-                            modifier = Modifier
-                                .size(40.dp)
-                                .background(Color(0xFFFFEEEE), RoundedCornerShape(10.dp)),
+                            modifier = Modifier.size(42.dp).background(Color(0xFFFFEBEE), RoundedCornerShape(10.dp)),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text(text = "📍", fontSize = 20.sp)
+                            Image(
+                                painter = painterResource(id = R.drawable.location),
+                                contentDescription = null,
+                                modifier = Modifier.size(24.dp),
+                                contentScale = ContentScale.Fit,
+                                colorFilter = ColorFilter.tint(Color(0xFFE74C3C))
+                            )
                         }
                         Spacer(modifier = Modifier.width(12.dp))
                         Column {
                             Text(text = "Last Location", fontSize = 12.sp, color = GrayText)
-                            Text(
-                                text = "36.8065° N, 10.1815° E",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.Black
-                            )
-                            Text(
-                                text = "Tunis, Tunisia",
-                                fontSize = 12.sp,
-                                color = GrayText
-                            )
+                            Text(text = "36.8065° N, 10.1815° E", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                            Text(text = "Tunis, Tunisia", fontSize = 12.sp, color = GrayText)
                         }
                     }
                     Box(
-                        modifier = Modifier
-                            .size(60.dp)
-                            .background(Color(0xFFE8F0FE), RoundedCornerShape(10.dp)),
+                        modifier = Modifier.size(65.dp).clip(RoundedCornerShape(10.dp)).background(Color(0xFFD6EAF8)),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(text = "🗺️", fontSize = 24.sp)
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(text = "🗺️", fontSize = 22.sp)
+                            Text(text = "Jardin du\nBelvédère", fontSize = 7.sp, color = Color(0xFF1A5276), textAlign = TextAlign.Center, fontWeight = FontWeight.Medium)
+                        }
                     }
                 }
             }
@@ -378,48 +354,69 @@ fun BikeAssociatedContent(username: String = "User") {
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        // Boutons Start / End Trip
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
+        // Start / End Trip
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Button(
-                onClick = { },
+                onClick = onStartTrip,  // ✅ utilise le paramètre reçu
                 modifier = Modifier.weight(1f).height(56.dp),
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = GreenMain)
             ) {
-                Text(text = "🚴 Start Trip", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                Image(
+                    painter = painterResource(id = R.drawable.ic_bicycling1),
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                    contentScale = ContentScale.Fit,
+                    colorFilter = ColorFilter.tint(Color.White)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(text = "Start Trip", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
             }
-
             OutlinedButton(
-                onClick = { },
+                onClick = {},
                 modifier = Modifier.weight(1f).height(56.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Black)
+                shape = RoundedCornerShape(16.dp)
             ) {
-                Text(text = "⏹ End Trip", fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                Image(
+                    painter = painterResource(id = R.drawable.end_trip),
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                    contentScale = ContentScale.Fit,
+                    colorFilter = ColorFilter.tint(Color(0xFF555555))
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(text = "End Trip", color = Color(0xFF555555), fontSize = 15.sp)
             }
         }
 
         Spacer(modifier = Modifier.height(12.dp))
 
         // View Trip History
-        OutlinedButton(
-            onClick = { },
-            modifier = Modifier.fillMaxWidth().height(52.dp),
+        Card(
+            modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF444444))
+            colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.92f)),
+            elevation = CardDefaults.cardElevation(2.dp),
+            onClick = { onViewHistory() }
         ) {
-            Icon(
-                imageVector = Icons.Default.List,
-                contentDescription = null,
-                tint = Color(0xFF444444),
-                modifier = Modifier.size(20.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(text = "View Trip History", fontSize = 15.sp, color = Color(0xFF444444))
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.ic_history),
+                    contentDescription = null,
+                    modifier = Modifier.size(22.dp),
+                    contentScale = ContentScale.Fit,
+                    colorFilter = ColorFilter.tint(Color(0xFF555555))
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(text = "View Trip History", fontSize = 16.sp, fontWeight = FontWeight.Medium, color = Color(0xFF555555))
+            }
         }
+
+        Spacer(modifier = Modifier.height(24.dp))
     }
 }
 
@@ -427,75 +424,75 @@ fun BikeAssociatedContent(username: String = "User") {
 // BOTTOM NAVIGATION BAR
 // ═══════════════════════════════
 @Composable
-fun BottomNavigationBar(
-    selectedTab: Int,
-    onTabSelected: (Int) -> Unit
-) {
-    NavigationBar(
-        containerColor = Color.White,
-        tonalElevation = 8.dp
-    ) {
-        val tabs = listOf(
-            Triple("Home", Icons.Default.Home, 0),
-            Triple("Explore", Icons.Default.Search, 1),
-            Triple("My Trips", Icons.Default.List, 2),
-            Triple("Profile", Icons.Default.Person, 3)
+fun BottomNavigationBar(selectedTab: Int, onTabSelected: (Int) -> Unit) {
+    NavigationBar(containerColor = Color.White, tonalElevation = 8.dp) {
+
+        NavigationBarItem(
+            selected = selectedTab == 0,
+            onClick = { onTabSelected(0) },
+            icon = {
+                Icon(imageVector = Icons.Default.Home, contentDescription = "Home", modifier = Modifier.size(24.dp))
+            },
+            label = { Text(text = "Home", fontSize = 11.sp) },
+            colors = NavigationBarItemDefaults.colors(
+                selectedIconColor = GreenMain, selectedTextColor = GreenMain,
+                unselectedIconColor = GrayText, unselectedTextColor = GrayText,
+                indicatorColor = GreenLight
+            )
         )
 
-        tabs.forEach { (label, icon, index) ->
-            NavigationBarItem(
-                selected = selectedTab == index,
-                onClick = { onTabSelected(index) },
-                icon = {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = label,
-                        modifier = Modifier.size(24.dp)
-                    )
-                },
-                label = { Text(text = label, fontSize = 11.sp) },
-                colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = PurpleMain,
-                    selectedTextColor = PurpleMain,
-                    unselectedIconColor = GrayText,
-                    unselectedTextColor = GrayText,
-                    indicatorColor = Color(0xFFEEF0FF)
+        NavigationBarItem(
+            selected = selectedTab == 1,
+            onClick = { onTabSelected(1) },
+            icon = {
+                Image(
+                    painter = painterResource(id = R.drawable.ic_explore),
+                    contentDescription = "Explore",
+                    modifier = Modifier.size(24.dp),
+                    contentScale = ContentScale.Fit,
+                    colorFilter = ColorFilter.tint(if (selectedTab == 1) GreenMain else GrayText)
                 )
+            },
+            label = { Text(text = "Explore", fontSize = 11.sp) },
+            colors = NavigationBarItemDefaults.colors(
+                selectedTextColor = GreenMain, unselectedTextColor = GrayText, indicatorColor = GreenLight
             )
-        }
-    }
-}
+        )
 
-// ═══════════════════════════════
-// PAGES TEMPORAIRES
-// ═══════════════════════════════
-@Composable
-fun ExploreContent() {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text(text = "🗺️ Explore — Coming Soon", fontSize = 18.sp, color = GrayText)
-    }
-}
+        NavigationBarItem(
+            selected = selectedTab == 2,
+            onClick = { onTabSelected(2) },
+            icon = {
+                Image(
+                    painter = painterResource(id = R.drawable.task),
+                    contentDescription = "My Trips",
+                    modifier = Modifier.size(24.dp),
+                    contentScale = ContentScale.Fit,
+                    colorFilter = ColorFilter.tint(if (selectedTab == 2) GreenMain else GrayText)
+                )
+            },
+            label = { Text(text = "My Trips", fontSize = 11.sp) },
+            colors = NavigationBarItemDefaults.colors(
+                selectedTextColor = GreenMain, unselectedTextColor = GrayText, indicatorColor = GreenLight
+            )
+        )
 
-@Composable
-fun MyTripsContent() {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text(text = "🚴 My Trips — Coming Soon", fontSize = 18.sp, color = GrayText)
-    }
-}
-
-@Composable
-fun ProfileContent(onLogout: () -> Unit) {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(text = "👤 Profile — Coming Soon", fontSize = 18.sp, color = GrayText)
-            Spacer(modifier = Modifier.height(24.dp))
-            Button(
-                onClick = onLogout,
-                colors = ButtonDefaults.buttonColors(containerColor = PurpleMain),
-                shape = RoundedCornerShape(30.dp)
-            ) {
-                Text(text = "Logout", color = Color.White)
-            }
-        }
+        NavigationBarItem(
+            selected = selectedTab == 3,
+            onClick = { onTabSelected(3) },
+            icon = {
+                Image(
+                    painter = painterResource(id = R.drawable.ic_profile),
+                    contentDescription = "Profile",
+                    modifier = Modifier.size(24.dp),
+                    contentScale = ContentScale.Fit,
+                    colorFilter = ColorFilter.tint(if (selectedTab == 3) GreenMain else GrayText)
+                )
+            },
+            label = { Text(text = "Profile", fontSize = 11.sp) },
+            colors = NavigationBarItemDefaults.colors(
+                selectedTextColor = GreenMain, unselectedTextColor = GrayText, indicatorColor = GreenLight
+            )
+        )
     }
 }
