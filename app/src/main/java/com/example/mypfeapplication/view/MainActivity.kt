@@ -12,7 +12,7 @@ import com.example.mypfeapplication.repository.UserRepository
 import com.example.mypfeapplication.view.screens.HomeScreen
 import com.example.mypfeapplication.view.screens.LoginScreen
 import com.example.mypfeapplication.view.screens.WelcomeScreen
-import com.example.mypfeapplication.view.screens.TripMapScreen
+import com.example.mypfeapplication.view.screens.BikeLocationScreen
 
 val PurpleMain = Color(0xFF5C5EDD)
 
@@ -48,26 +48,25 @@ class MainActivity : ComponentActivity() {
                 }
 
                 composable("home") {
-                    val localRepository = UserRepository(LocalContext.current)
                     HomeScreen(
-                        username = localRepository.getUsername(),
-                        hasBike = true,
                         onStartTrip = {
-                            navController.navigate("trip_map")
+                            navController.navigate("bike_location")
+
                         },
                         onLogout = {
-                            localRepository.logout()
                             navController.navigate("welcome") {
                                 popUpTo("home") { inclusive = true }
                             }
                         }
                     )
                 }
-                composable("trip_map") {
-                    TripMapScreen(
+                composable("bike_location") {
+                    val localRepository = UserRepository(LocalContext.current)
+                    BikeLocationScreen(
+                        username = localRepository.getUsername(),
                         onEndTrip = {
                             navController.navigate("home") {
-                                popUpTo("trip_map") { inclusive = true }
+                                popUpTo("bike_location") { inclusive = true }
                             }
                         }
                     )
