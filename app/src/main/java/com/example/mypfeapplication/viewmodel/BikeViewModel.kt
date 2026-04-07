@@ -10,7 +10,7 @@ import kotlinx.coroutines.launch
 class BikeViewModel : ViewModel() {
 
     // ✅ État du trip
-    private val _tripStarted = MutableLiveData<Boolean>(false)
+    private val _tripStarted = MutableLiveData<Boolean>(true)
     val tripStarted: LiveData<Boolean> = _tripStarted
 
     // ✅ Timer en secondes

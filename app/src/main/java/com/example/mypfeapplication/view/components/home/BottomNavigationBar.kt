@@ -51,7 +51,7 @@ fun BottomNavigationBar(
             onClick = { onTabSelected(1) },
             icon = {
                 Image(
-                    painter = painterResource(id = R.drawable.ic_explore),
+                    painter = painterResource(id = R.drawable.dd),
                     contentDescription = "Explore",
                     modifier = Modifier.size(24.dp),
                     contentScale = ContentScale.Fit,
