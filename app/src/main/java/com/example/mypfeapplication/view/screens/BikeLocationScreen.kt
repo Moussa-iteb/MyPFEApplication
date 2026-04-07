@@ -26,7 +26,7 @@ fun BikeLocationScreen(
     val bikeLocation = LatLng(36.8008, 10.1797)
 
     // ✅ Observe les LiveData
-    val tripStarted by viewModel.tripStarted.observeAsState(false)
+    val tripStarted by viewModel.tripStarted.observeAsState(true)
     val seconds by viewModel.seconds.observeAsState(0)
     val bikeId by viewModel.bikeId.observeAsState("ZE-0815")
     val batteryLevel by viewModel.batteryLevel.observeAsState(0.87f)

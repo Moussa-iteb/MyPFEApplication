@@ -278,7 +278,7 @@ fun BikeAssociatedContent(
                 shape = RoundedCornerShape(16.dp)
             ) {
                 Image(
-                    painter = painterResource(id = R.drawable.end_trip),
+                    painter = painterResource(id = R.drawable.stop),
                     contentDescription = null,
                     modifier = Modifier.size(20.dp),
                     contentScale = ContentScale.Fit,

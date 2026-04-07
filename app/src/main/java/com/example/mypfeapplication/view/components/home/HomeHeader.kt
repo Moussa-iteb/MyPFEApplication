@@ -1,6 +1,7 @@
 package com.example.mypfeapplication.view.components.home
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
@@ -15,7 +16,11 @@ import androidx.compose.ui.unit.sp
 import com.example.mypfeapplication.view.screens.GreenMain
 
 @Composable
-fun HomeHeader(username: String) {
+fun HomeHeader(
+    username: String,
+    notificationCount: Int = 3,       // ✅ ajouté
+    onNotifications: () -> Unit = {}   // ✅ ajouté
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -51,19 +56,45 @@ fun HomeHeader(username: String) {
                     Text(text = "Online", fontSize = 11.sp, color = GreenMain)
                 }
             }
+
+            // ✅ Avatar + Badge
             Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(GreenMain),
-                contentAlignment = Alignment.Center
+                modifier = Modifier.clickable { onNotifications() }
             ) {
-                Text(
-                    text = username.take(1).uppercase(),
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp
-                )
+                // Avatar
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(GreenMain),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = username.take(1).uppercase(),
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    )
+                }
+
+                // ✅ Badge rouge
+                if (notificationCount > 0) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .size(16.dp)
+                            .clip(CircleShape)
+                            .background(Color.Red),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = if (notificationCount > 9) "9+" else "$notificationCount",
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
+                }
             }
         }
     }

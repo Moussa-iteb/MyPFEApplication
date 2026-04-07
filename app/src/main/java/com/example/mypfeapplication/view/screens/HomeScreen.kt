@@ -19,9 +19,11 @@ import com.example.mypfeapplication.viewmodel.HomeViewModel
 fun HomeScreen(
     onStartTrip: () -> Unit = {},
     onLogout: () -> Unit = {},
-    viewModel: HomeViewModel = viewModel()
+    viewModel: HomeViewModel = viewModel(),
+    onEditProfile: () -> Unit = {},
+    onChangePassword: () -> Unit = {},
+    onNotifications: () -> Unit = {}
 ) {
-    // ✅ Observe les LiveData
     val username by viewModel.username.observeAsState("User")
     val hasBike by viewModel.hasBike.observeAsState(false)
     val selectedTab by viewModel.selectedTab.observeAsState(0)
@@ -76,7 +78,12 @@ fun HomeScreen(
                     .fillMaxSize()
                     .padding(paddingValues)
             ) {
-                HomeHeader(username = username)
+                // ✅ onNotifications passé à HomeHeader
+                HomeHeader(
+                    username = username,
+                    notificationCount = 3,
+                    onNotifications = onNotifications
+                )
                 when (selectedTab) {
                     0 -> if (hasBike) BikeAssociatedContent(
                         username = username,
@@ -85,8 +92,11 @@ fun HomeScreen(
                     ) else NoBikeContent()
                     1 -> ExploreScreen()
                     2 -> MyTripsScreen()
-                    3 -> ProfileScreen(
+                    // ✅ onNotifications passé à EditProfileScreen
+                    3 -> EditProfileScreen(
                         username = username,
+                        onChangePassword = onChangePassword,
+                        onNotifications = onNotifications,
                         onLogout = {
                             viewModel.logout()
                             onLogout()

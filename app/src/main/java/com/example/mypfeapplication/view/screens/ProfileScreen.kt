@@ -19,7 +19,10 @@ import androidx.compose.ui.unit.sp
 @Composable
 fun ProfileScreen(
     username: String = "User",
-    onLogout: () -> Unit = {}
+    onLogout: () -> Unit = {},
+    onEditProfile: () -> Unit = {},
+    onChangePassword: () -> Unit = {},
+    onNotifications: () -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -44,7 +47,10 @@ fun ProfileScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Box(
-                    modifier = Modifier.size(80.dp).clip(CircleShape).background(GreenMain),
+                    modifier = Modifier
+                        .size(80.dp)
+                        .clip(CircleShape)
+                        .background(GreenMain),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
@@ -59,7 +65,9 @@ fun ProfileScreen(
                 Text(text = "$username@smartride.com", fontSize = 14.sp, color = GrayText)
                 Spacer(modifier = Modifier.height(8.dp))
                 Box(
-                    modifier = Modifier.background(GreenLight, RoundedCornerShape(20.dp)).padding(horizontal = 12.dp, vertical = 4.dp)
+                    modifier = Modifier
+                        .background(GreenLight, RoundedCornerShape(20.dp))
+                        .padding(horizontal = 12.dp, vertical = 4.dp)
                 ) {
                     Text(text = "● Online", fontSize = 12.sp, color = GreenMain)
                 }
@@ -70,26 +78,34 @@ fun ProfileScreen(
 
         // Menu items
         listOf(
-            Triple("👤", "My Account", "Personal information"),
-            Triple("🚲", "My Bike", "Assigned bike details"),
-            Triple("📍", "Trip History", "View all trips"),
-            Triple("🔔", "Notifications", "Manage alerts"),
-            Triple("⚙️", "Settings", "App preferences")
-        ).forEach { (emoji, title, subtitle) ->
+            Triple("👤", "My Account", "Personal information") to onEditProfile,
+            Triple("🚲", "My Bike", "Assigned bike details") to {},
+            Triple("📍", "Trip History", "View all trips") to {},
+            Triple("🔔", "Notifications", "Manage alerts") to onNotifications,
+            Triple("⚙️", "Settings", "App preferences") to onChangePassword
+        ).forEach { (item, action) ->
+            val (emoji, title, subtitle) = item
             Card(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
                 shape = RoundedCornerShape(14.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.White),
-                elevation = CardDefaults.cardElevation(2.dp)
+                elevation = CardDefaults.cardElevation(2.dp),
+                onClick = action
             ) {
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
-                            modifier = Modifier.size(40.dp).background(GreenLight, RoundedCornerShape(10.dp)),
+                            modifier = Modifier
+                                .size(40.dp)
+                                .background(GreenLight, RoundedCornerShape(10.dp)),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(text = emoji, fontSize = 18.sp)
@@ -107,15 +123,7 @@ fun ProfileScreen(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        Button(
-            onClick = onLogout,
-            modifier = Modifier.fillMaxWidth().height(52.dp),
-            shape = RoundedCornerShape(14.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF4444))
-        ) {
-            Text(text = "🚪 Logout", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
-        }
 
-        Spacer(modifier = Modifier.height(24.dp))
+
     }
 }
