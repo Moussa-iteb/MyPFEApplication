@@ -14,24 +14,57 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.mypfeapplication.view.PurpleMain
 import com.example.mypfeapplication.viewmodel.LoginViewModel
 
 @Composable
 fun LoginScreen(
     viewModel: LoginViewModel = viewModel(),
     onLoginSuccess: () -> Unit,
+    onForgotPassword: () -> Unit = {},
     onSignUpClick: () -> Unit = {}
 ) {
-    val authData by viewModel.authData.observeAsState()
+    val authResponse by viewModel.authResponse.observeAsState()
     val isLoading by viewModel.isLoading.observeAsState(false)
     val error by viewModel.error.observeAsState()
+    val adminError by viewModel.adminError.observeAsState(false)
 
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
 
-    LaunchedEffect(authData) {
-        if (authData != null) onLoginSuccess()
+    // Reset عند فتح الـ screen
+    LaunchedEffect(Unit) {
+        viewModel.resetAuthResponse()
+    }
+
+    // Navigation بعد login ناجح
+    LaunchedEffect(authResponse) {
+        authResponse?.let { response ->
+            if (response.success && response.data?.user?.role != "admin") {
+                onLoginSuccess()
+            }
+        }
+    }
+
+    // Alert للـ admin
+    if (adminError) {
+        AlertDialog(
+            onDismissRequest = { viewModel.clearAdminError() },
+            title = {
+                Text(
+                    text = "Accès refusé",
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Red
+                )
+            },
+            text = {
+                Text("Ce compte est réservé aux administrateurs. Vous ne pouvez pas vous connecter ici.")
+            },
+            confirmButton = {
+                TextButton(onClick = { viewModel.clearAdminError() }) {
+                    Text("OK", color = GreenMain)
+                }
+            }
+        )
     }
 
     Column(
@@ -52,7 +85,12 @@ fun LoginScreen(
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        Text(text = "Email", modifier = Modifier.fillMaxWidth(), color = Color.Gray, fontSize = 14.sp)
+        Text(
+            text = "Email",
+            modifier = Modifier.fillMaxWidth(),
+            color = Color.Gray,
+            fontSize = 14.sp
+        )
         Spacer(modifier = Modifier.height(4.dp))
         OutlinedTextField(
             value = email,
@@ -62,14 +100,19 @@ fun LoginScreen(
             colors = OutlinedTextFieldDefaults.colors(
                 focusedContainerColor = Color.White,
                 unfocusedContainerColor = Color.White,
-                focusedBorderColor = PurpleMain,
+                focusedBorderColor = GreenMain,
                 unfocusedBorderColor = Color.LightGray
             )
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Text(text = "Password", modifier = Modifier.fillMaxWidth(), color = Color.Gray, fontSize = 14.sp)
+        Text(
+            text = "Password",
+            modifier = Modifier.fillMaxWidth(),
+            color = Color.Gray,
+            fontSize = 14.sp
+        )
         Spacer(modifier = Modifier.height(4.dp))
         OutlinedTextField(
             value = password,
@@ -80,14 +123,17 @@ fun LoginScreen(
             colors = OutlinedTextFieldDefaults.colors(
                 focusedContainerColor = Color.White,
                 unfocusedContainerColor = Color.White,
-                focusedBorderColor = PurpleMain,
+                focusedBorderColor = GreenMain,
                 unfocusedBorderColor = Color.LightGray
             )
         )
 
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            TextButton(onClick = {}) {
-                Text(text = "Forgot password?", color = PurpleMain, fontSize = 12.sp)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End
+        ) {
+            TextButton(onClick = onForgotPassword) {
+                Text(text = "Forgot password?", color = GreenMain, fontSize = 12.sp)
             }
         }
 
@@ -98,16 +144,28 @@ fun LoginScreen(
 
         Button(
             onClick = { viewModel.login(email, password) },
-            modifier = Modifier.fillMaxWidth().height(52.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp),
             shape = RoundedCornerShape(30.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = PurpleMain),
+            colors = ButtonDefaults.buttonColors(containerColor = GreenMain),
             enabled = !isLoading
         ) {
             if (isLoading) {
-                CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White)
+                CircularProgressIndicator(
+                    modifier = Modifier.size(20.dp),
+                    color = Color.White
+                )
             } else {
-                Text(text = "Login", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                Text(
+                    text = "Login",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
             }
         }
+
+
     }
 }

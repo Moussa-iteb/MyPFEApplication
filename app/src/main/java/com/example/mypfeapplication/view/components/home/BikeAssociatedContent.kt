@@ -28,7 +28,8 @@ import com.example.mypfeapplication.view.screens.GreenMain
 fun BikeAssociatedContent(
     username: String = "User",
     onViewHistory: () -> Unit = {},
-    onStartTrip: () -> Unit = {}
+    onStartTrip: () -> Unit = {},
+    onLogout: () -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -273,7 +274,7 @@ fun BikeAssociatedContent(
                 )
             }
             OutlinedButton(
-                onClick = {},
+                onClick = onLogout,
                 modifier = Modifier.weight(1f).height(56.dp),
                 shape = RoundedCornerShape(16.dp)
             ) {
