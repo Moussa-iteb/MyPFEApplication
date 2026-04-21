@@ -9,7 +9,7 @@ import retrofit2.http.POST
 
 interface ApiService {
 
-    @POST("auth/login")
+    @POST("auth/login/user")
     suspend fun login(
         @Body request: LoginRequest
     ): Response<AuthResponse>
@@ -18,4 +18,13 @@ interface ApiService {
     suspend fun register(
         @Body request: RegisterRequest
     ): Response<AuthResponse>
+    @POST("auth/forgot-password/user")
+    suspend fun forgotPasswordUser(
+        @Body body: Map<String, String>
+    ): Response<Any>
+
+    @POST("auth/reset-password/user")
+    suspend fun resetPasswordUser(
+        @Body body: Map<String, String>
+    ): Response<Any>
 }

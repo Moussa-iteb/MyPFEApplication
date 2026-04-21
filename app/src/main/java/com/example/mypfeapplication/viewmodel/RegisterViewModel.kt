@@ -5,16 +5,16 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
-import com.example.mypfeapplication.model.AuthData
+import com.example.mypfeapplication.model.AuthResponse
 import com.example.mypfeapplication.repository.UserRepository
 import kotlinx.coroutines.launch
 
 class RegisterViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val repository = UserRepository(application)  // ✅ contexte passé ici
+    private val repository = UserRepository(application)
 
-    private val _authData = MutableLiveData<AuthData?>()
-    val authData: LiveData<AuthData?> = _authData
+    private val _authResponse = MutableLiveData<AuthResponse?>()
+    val authResponse: LiveData<AuthResponse?> = _authResponse
 
     private val _isLoading = MutableLiveData<Boolean>()
     val isLoading: LiveData<Boolean> = _isLoading
@@ -25,18 +25,16 @@ class RegisterViewModel(application: Application) : AndroidViewModel(application
     fun register(
         username: String,
         email: String,
-        password: String,
-        firstName: String? = null,
-        lastName: String? = null
+        password: String
     ) {
         viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
-            val result = repository.register(username, email, password, firstName, lastName)
+            val result = repository.register(username, email, password)
             if (result != null) {
-                _authData.value = result
+                _authResponse.value = result
             } else {
-                _error.value = "Registration failed. Please try again."
+                _error.value = "Inscription échouée. Veuillez réessayer."
             }
             _isLoading.value = false
         }

@@ -1,28 +1,26 @@
 package com.example.mypfeapplication.viewmodel
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.ViewModel
 import com.example.mypfeapplication.repository.UserRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 
-class HomeViewModel(application: Application) : AndroidViewModel(application) {
+@HiltViewModel
+class HomeViewModel @Inject constructor(
+    private val repository: UserRepository  // ✅ injecté automatiquement par Hilt
+) : ViewModel() {                           // ✅ ViewModel simple, plus AndroidViewModel
 
-    private val repository = UserRepository(application)
-
-    // ✅ Username depuis le token JWT
     private val _username = MutableLiveData<String>()
     val username: LiveData<String> = _username
 
-    // ✅ Est-ce que l'utilisateur a un vélo associé
     private val _hasBike = MutableLiveData<Boolean>(false)
     val hasBike: LiveData<Boolean> = _hasBike
 
-    // ✅ Afficher l'historique ou non
     private val _showHistory = MutableLiveData<Boolean>(false)
     val showHistory: LiveData<Boolean> = _showHistory
 
-    // ✅ Onglet sélectionné de la bottom bar
     private val _selectedTab = MutableLiveData<Int>(0)
     val selectedTab: LiveData<Int> = _selectedTab
 
@@ -51,7 +49,9 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         _hasBike.value = value
     }
 
-    fun logout() {
-        repository.logout()
-    }
+    fun getUsername(): String = repository.getUsername()
+
+    fun getToken(): String? = repository.getToken()
+
+    fun logout() = repository.logout()
 }
