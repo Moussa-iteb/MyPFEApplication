@@ -1,17 +1,19 @@
 package com.example.mypfeapplication.viewmodel
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.mypfeapplication.model.AuthResponse
 import com.example.mypfeapplication.repository.UserRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-class LoginViewModel(application: Application) : AndroidViewModel(application) {
-
-    private val repository = UserRepository(application)
+@HiltViewModel
+class LoginViewModel @Inject constructor(
+    private val repository: UserRepository
+) : ViewModel() {
 
     private val _authResponse = MutableLiveData<AuthResponse?>()
     val authResponse: LiveData<AuthResponse?> = _authResponse
@@ -44,6 +46,8 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                     result.data?.token?.let { repository.saveToken(it) }
                     result.data?.user?.role?.let { repository.saveRole(it) }
                     result.data?.user?.username?.let { repository.saveUsername(it) }
+                    result.data?.user?.id?.let { repository.saveUserId(it) }
+                    result.data?.user?.email?.let { repository.saveEmail(it) }
                     _authResponse.value = result
                 }
             } else {

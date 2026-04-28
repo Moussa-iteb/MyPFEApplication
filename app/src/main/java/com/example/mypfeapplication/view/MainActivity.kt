@@ -3,6 +3,7 @@ package com.example.mypfeapplication.view
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.NavHost
@@ -13,13 +14,15 @@ import com.example.mypfeapplication.view.screens.BikeLocationScreen
 import com.example.mypfeapplication.view.screens.ChangePasswordScreen
 import com.example.mypfeapplication.view.screens.EditProfileScreen
 import com.example.mypfeapplication.view.screens.HomeScreen
+import com.example.mypfeapplication.view.screens.QrScannerScreen
 import com.example.mypfeapplication.view.screens.LoginScreen
 import com.example.mypfeapplication.view.screens.NotificationsScreen
 import com.example.mypfeapplication.view.screens.WelcomeScreen
+import com.example.mypfeapplication.view.screens.ForgotPasswordScreen
 import com.example.mypfeapplication.viewmodel.HomeViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
-import com.example.mypfeapplication.view.screens.ForgotPasswordScreen
+
 val PurpleMain = Color(0xFF5C5EDD)
 
 @AndroidEntryPoint
@@ -61,6 +64,7 @@ class MainActivity : ComponentActivity() {
                 composable("home") {
                     val viewModel: HomeViewModel = hiltViewModel()
                     HomeScreen(
+                        viewModel = viewModel,
                         onStartTrip = { navController.navigate("bike_location") },
                         onLogout = {
                             viewModel.logout()
@@ -70,19 +74,21 @@ class MainActivity : ComponentActivity() {
                         },
                         onEditProfile = { navController.navigate("edit_profile") },
                         onChangePassword = { navController.navigate("change_password") },
-                        onNotifications = { navController.navigate("notifications") }
+                        onNotifications = { navController.navigate("notifications") },
+                        onScanQr = { navController.navigate("qr_scanner") }
                     )
                 }
 
                 composable("admin_home") {
-                    // TODO: زيد AdminHomeScreen لاحقاً
-                    // AdminHomeScreen(onLogout = { ... })
+                    // admin screen
                 }
 
                 composable("bike_location") {
                     val viewModel: HomeViewModel = hiltViewModel()
                     BikeLocationScreen(
                         username = viewModel.getUsername(),
+                        bikeId = viewModel.getBikeId(),
+                        batteryLevel = viewModel.getBatteryLevel() / 100f,
                         onEndTrip = {
                             navController.navigate("home") {
                                 popUpTo("bike_location") { inclusive = true }
@@ -96,6 +102,7 @@ class MainActivity : ComponentActivity() {
                         onBack = { navController.popBackStack() }
                     )
                 }
+
                 composable("forgot_password") {
                     ForgotPasswordScreen(
                         onBack = { navController.popBackStack() },
@@ -106,9 +113,27 @@ class MainActivity : ComponentActivity() {
                         }
                     )
                 }
+
                 composable("notifications") {
                     NotificationsScreen(
                         onBack = { navController.popBackStack() }
+                    )
+                }
+
+                composable("qr_scanner") { backStackEntry ->
+                    val homeEntry = remember(backStackEntry) {
+                        navController.getBackStackEntry("home")
+                    }
+                    val viewModel: HomeViewModel = hiltViewModel(homeEntry)
+                    QrScannerScreen(
+                        viewModel = viewModel,
+                        onBack = { navController.popBackStack() },
+                        onScanSuccess = {
+                            navController.navigate("home") {
+                                popUpTo("home") { inclusive = false }
+                                launchSingleTop = true
+                            }
+                        }
                     )
                 }
             }
