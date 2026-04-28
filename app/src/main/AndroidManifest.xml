@@ -28,7 +28,7 @@
             tools:replace="screenOrientation" />
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="AIzaSyACxir1C1OBVF3hS_RYgiier6DnXfDtiaU" />
+            android:value="" />
         <activity
             android:name=".view.MainActivity"
             android:exported="true"
