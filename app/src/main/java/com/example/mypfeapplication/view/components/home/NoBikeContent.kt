@@ -20,7 +20,7 @@ import com.example.mypfeapplication.view.screens.GrayText
 import com.example.mypfeapplication.view.screens.GreenMain
 
 @Composable
-fun NoBikeContent() {
+fun NoBikeContent(onScanQr: () -> Unit = {}) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -32,13 +32,15 @@ fun NoBikeContent() {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .fillMaxHeight(0.55f),
+                .fillMaxHeight(0.65f),
             contentAlignment = Alignment.BottomCenter
         ) {
             Image(
                 painter = painterResource(id = R.drawable.logoscan),
                 contentDescription = "Bike",
-                modifier = Modifier.fillMaxWidth().fillMaxHeight(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight(),
                 contentScale = ContentScale.Fit
             )
         }
@@ -51,17 +53,19 @@ fun NoBikeContent() {
                 color = Color.Black,
                 textAlign = TextAlign.Center
             )
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = "Scan a bike to start your first trip",
                 fontSize = 15.sp,
                 color = GrayText,
                 textAlign = TextAlign.Center
             )
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(16.dp))
             Button(
-                onClick = { },
-                modifier = Modifier.fillMaxWidth().height(58.dp),
+                onClick = { onScanQr() },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(58.dp),
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = GreenMain)
             ) {

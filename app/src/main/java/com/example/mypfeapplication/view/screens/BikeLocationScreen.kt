@@ -6,8 +6,10 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.mypfeapplication.utils.LocationTracker
 import com.example.mypfeapplication.view.components.bike.*
 import com.example.mypfeapplication.view.components.common.AppHeader
 import com.example.mypfeapplication.view.components.map.BikeMap
@@ -21,23 +23,36 @@ val SalmonMain = Color(0xFFE8756A)
 fun BikeLocationScreen(
     username: String = "User",
     onEndTrip: () -> Unit = {},
-    viewModel: BikeViewModel = viewModel()
+    bikeId: String = "",
+    batteryLevel: Float = 0f,
+    viewModel: BikeViewModel = hiltViewModel()
 ) {
     val bikeLocation = LatLng(36.8008, 10.1797)
 
-    // ✅ Observe les LiveData
+    // ← context و locationTracker أولاً
+    val context = LocalContext.current
+    val locationTracker = remember { LocationTracker(context) }
+
+    // ← بعدها باقي الـ val
     val tripStarted by viewModel.tripStarted.observeAsState(true)
-    val seconds by viewModel.seconds.observeAsState(0)
-    val bikeId by viewModel.bikeId.observeAsState("ZE-0815")
-    val batteryLevel by viewModel.batteryLevel.observeAsState(0.87f)
-    val location by viewModel.location.observeAsState("Avenue de l'Indépendance")
+
+
+    val locationAddress by locationTracker.currentAddress.collectAsState()
+
+    LaunchedEffect(Unit) {
+        locationTracker.startTracking()
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            locationTracker.stopTracking()
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
 
-        // ✅ Carte
         BikeMap(bikeLocation = bikeLocation)
 
-        // ✅ Header
         Box(modifier = Modifier.align(Alignment.TopStart)) {
             AppHeader(
                 username = username,
@@ -45,7 +60,6 @@ fun BikeLocationScreen(
             )
         }
 
-        // ✅ Card + Boutons
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -54,7 +68,7 @@ fun BikeLocationScreen(
         ) {
             BikeInfoCard(
                 bikeId = bikeId,
-                location = location,
+                location = locationAddress,
                 batteryLevel = batteryLevel,
                 tripStarted = tripStarted,
                 formattedTime = viewModel.getFormattedTime()
@@ -69,6 +83,7 @@ fun BikeLocationScreen(
             } else {
                 EndTripButton(
                     onEndTrip = {
+                        locationTracker.stopTracking()
                         viewModel.endTrip()
                         onEndTrip()
                     }

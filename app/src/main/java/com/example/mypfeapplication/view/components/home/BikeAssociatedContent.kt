@@ -17,20 +17,46 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import com.example.mypfeapplication.R
 import com.example.mypfeapplication.view.screens.GrayText
 import com.example.mypfeapplication.view.screens.GreenMain
 
+private const val MAPS_API_KEY = "AIzaSyACxir1C1OBVF3hS_RYgiier6DnXfDtiaU"
+
 @Composable
 fun BikeAssociatedContent(
     username: String = "User",
+    bikeId: Int? = null,
+    bikeBrand: String? = null,
+    bikeModel: String? = null,
+    batteryLevel: Int? = null,
+    lastLocation: String = "Fetching location...",
+    lastAddress: String = "Fetching address...",
     onViewHistory: () -> Unit = {},
     onStartTrip: () -> Unit = {},
     onLogout: () -> Unit = {}
 ) {
+    // بناء رابط الـ Static Map من الـ lastLocation
+    val mapUrl = if (lastLocation != "Fetching location..." && lastLocation != "Unknown") {
+        val coords = lastLocation
+            .replace("° N", "")
+            .replace("° E", "")
+            .trim()
+            .split(",")
+        if (coords.size == 2) {
+            val lat = coords[0].trim()
+            val lng = coords[1].trim()
+            "https://maps.googleapis.com/maps/api/staticmap?" +
+                    "center=$lat,$lng" +
+                    "&zoom=15&size=100x100" +
+                    "&markers=color:red%7C$lat,$lng" +
+                    "&key=$MAPS_API_KEY"
+        } else null
+    } else null
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -47,18 +73,15 @@ fun BikeAssociatedContent(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        // ✅ Card Bike Info
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = Color.White.copy(alpha = 0.92f)
-            ),
+            colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.92f)),
             elevation = CardDefaults.cardElevation(8.dp)
         ) {
             Column(modifier = Modifier.padding(20.dp)) {
                 Text(
-                    text = "Your Associated Bike",
+                    text = "${bikeBrand ?: "Bike"} ${bikeModel ?: ""}",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.Black
@@ -91,16 +114,12 @@ fun BikeAssociatedContent(
                         Column {
                             Text(text = "Bike ID", fontSize = 12.sp, color = GrayText)
                             Text(
-                                text = "B-4815",
+                                text = "B-${bikeId ?: "---"}",
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.Black
                             )
                         }
-                    }
-                    Column(horizontalAlignment = Alignment.End) {
-                        Text(text = "2h 14m", fontSize = 13.sp, color = GrayText)
-                        Text(text = "12.4 km", fontSize = 13.sp, color = GrayText)
                     }
                 }
 
@@ -129,7 +148,7 @@ fun BikeAssociatedContent(
                     Column {
                         Text(text = "Battery", fontSize = 12.sp, color = GrayText)
                         Text(
-                            text = "87% Charged",
+                            text = "${batteryLevel ?: "--"}% Charged",
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.Black
@@ -215,30 +234,40 @@ fun BikeAssociatedContent(
                         Column {
                             Text(text = "Last Location", fontSize = 12.sp, color = GrayText)
                             Text(
-                                text = "36.8065° N, 10.1815° E",
+                                text = lastLocation,
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.Black
                             )
-                            Text(text = "Tunis, Tunisia", fontSize = 12.sp, color = GrayText)
+                            Text(
+                                text = lastAddress,
+                                fontSize = 12.sp,
+                                color = GrayText
+                            )
                         }
                     }
-                    Box(
-                        modifier = Modifier
-                            .size(65.dp)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(Color(0xFFD6EAF8)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    // Map image
+                    if (mapUrl != null) {
+                        AsyncImage(
+                            model = mapUrl,
+                            contentDescription = "Map",
+                            modifier = Modifier
+                                .size(65.dp)
+                                .clip(RoundedCornerShape(10.dp)),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .size(65.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(Color(0xFFD6EAF8)),
+                            contentAlignment = Alignment.Center
+                        ) {
                             Text(text = "🗺️", fontSize = 22.sp)
-                            Text(
-                                text = "Jardin du\nBelvédère",
-                                fontSize = 7.sp,
-                                color = Color(0xFF1A5276),
-                                textAlign = TextAlign.Center,
-                                fontWeight = FontWeight.Medium
-                            )
                         }
                     }
                 }
@@ -247,7 +276,6 @@ fun BikeAssociatedContent(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        // ✅ Boutons Start / End Trip
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -292,13 +320,10 @@ fun BikeAssociatedContent(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // ✅ View Trip History
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = Color.White.copy(alpha = 0.92f)
-            ),
+            colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.92f)),
             elevation = CardDefaults.cardElevation(2.dp),
             onClick = { onViewHistory() }
         ) {

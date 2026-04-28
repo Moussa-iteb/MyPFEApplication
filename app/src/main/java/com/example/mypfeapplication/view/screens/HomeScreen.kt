@@ -13,7 +13,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.ui.platform.LocalContext
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.mypfeapplication.utils.LocationTracker
 import com.example.mypfeapplication.view.components.home.*
 import com.example.mypfeapplication.viewmodel.HomeViewModel
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
@@ -24,17 +26,25 @@ import com.google.accompanist.permissions.rememberMultiplePermissionsState
 fun HomeScreen(
     onStartTrip: () -> Unit = {},
     onLogout: () -> Unit = {},
-    viewModel: HomeViewModel = viewModel(),
+    viewModel: HomeViewModel = hiltViewModel(),
     onEditProfile: () -> Unit = {},
     onChangePassword: () -> Unit = {},
-    onNotifications: () -> Unit = {}
+    onNotifications: () -> Unit = {},
+    onScanQr: () -> Unit = {}
 ) {
     val username by viewModel.username.observeAsState("User")
     val hasBike by viewModel.hasBike.observeAsState(false)
     val selectedTab by viewModel.selectedTab.observeAsState(0)
     val showHistory by viewModel.showHistory.observeAsState(false)
+    val assignedBike by viewModel.assignedBike.observeAsState()
+    val email by viewModel.email.observeAsState("")
 
-    // ✅ Permissions state
+    // LocationTracker
+    val context = LocalContext.current
+    val locationTracker = remember { LocationTracker(context) }
+    val currentAddress by locationTracker.currentAddress.collectAsState()
+    val currentLocation by locationTracker.currentLocation.collectAsState()
+
     val permissions = remember {
         mutableListOf(
             Manifest.permission.ACCESS_FINE_LOCATION,
@@ -48,11 +58,16 @@ fun HomeScreen(
 
     val multiplePermissionsState = rememberMultiplePermissionsState(permissions)
 
-
     LaunchedEffect(Unit) {
         if (!multiplePermissionsState.allPermissionsGranted) {
             multiplePermissionsState.launchMultiplePermissionRequest()
+        } else {
+            locationTracker.startTracking()
         }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose { locationTracker.stopTracking() }
     }
 
     if (showHistory) {
@@ -123,17 +138,23 @@ fun HomeScreen(
                 when (selectedTab) {
                     0 -> if (hasBike) BikeAssociatedContent(
                         username = username,
+                        bikeId = assignedBike?.id,
+                        bikeBrand = assignedBike?.brand,
+                        bikeModel = assignedBike?.model,
+                        batteryLevel = assignedBike?.batteryLevel,
+                        lastLocation = currentLocation?.let {
+                            "%.4f° N, %.4f° E".format(it.first, it.second)
+                        } ?: "Fetching location...",
+                        lastAddress = currentAddress,
                         onViewHistory = { viewModel.onViewHistory() },
                         onStartTrip = onStartTrip,
-                        onLogout = {
-                            viewModel.logout()
-                            onLogout()
-                        }
-                    ) else NoBikeContent()
+                        onLogout = { viewModel.returnBike() }
+                    ) else NoBikeContent(onScanQr = onScanQr)
                     1 -> ExploreScreen()
                     2 -> MyTripsScreen()
                     3 -> EditProfileScreen(
                         username = username,
+                        email = email,
                         onChangePassword = onChangePassword,
                         onNotifications = onNotifications,
                         onLogout = {

@@ -5,23 +5,37 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.mypfeapplication.viewmodel.ChangePasswordViewModel
 
 @Composable
 fun ChangePasswordScreen(
-    onBack: () -> Unit = {}
+    onBack: () -> Unit = {},
+    viewModel: ChangePasswordViewModel = hiltViewModel()
 ) {
     var currentPassword by remember { mutableStateOf("") }
     var newPassword by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
     val confirmMatch = confirmPassword.isNotEmpty() && confirmPassword == newPassword
+
+    val isLoading by viewModel.isLoading.observeAsState(false)
+    val success by viewModel.success.observeAsState(false)
+    val error by viewModel.error.observeAsState()
+
+    LaunchedEffect(success) {
+        if (success) {
+            viewModel.resetState()
+            onBack()
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -29,10 +43,8 @@ fun ChangePasswordScreen(
             .background(Color.White)
             .padding(horizontal = 24.dp)
     ) {
-
         Spacer(modifier = Modifier.height(24.dp))
 
-        // ✅ Header avec flèche retour
         Row(verticalAlignment = Alignment.CenterVertically) {
             TextButton(onClick = onBack) {
                 Text(text = "←", fontSize = 22.sp, color = DarkGreen)
@@ -48,7 +60,6 @@ fun ChangePasswordScreen(
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        // ✅ Current Password
         PasswordTextField(
             label = "CURRENT PASSWORD",
             value = currentPassword,
@@ -57,7 +68,6 @@ fun ChangePasswordScreen(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        // ✅ New Password
         PasswordTextField(
             label = "NEW PASSWORD",
             value = newPassword,
@@ -66,7 +76,6 @@ fun ChangePasswordScreen(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        // ✅ Confirm New Password — bordure verte si match
         OutlinedTextField(
             value = confirmPassword,
             onValueChange = { confirmPassword = it },
@@ -86,7 +95,7 @@ fun ChangePasswordScreen(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(10.dp),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = if (confirmMatch) DarkGreen else DarkGreen,
+                focusedBorderColor = DarkGreen,
                 unfocusedBorderColor = if (confirmMatch) DarkGreen else Color.LightGray,
                 focusedContainerColor = Color.White,
                 unfocusedContainerColor = Color.White,
@@ -94,28 +103,52 @@ fun ChangePasswordScreen(
             )
         )
 
-        Spacer(modifier = Modifier.height(40.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
-        // ✅ Bouton Change Password
+        error?.let {
+            Text(
+                text = it,
+                color = Color.Red,
+                fontSize = 13.sp,
+                modifier = Modifier.padding(vertical = 4.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
         Button(
-            onClick = { },
+            onClick = {
+                viewModel.changePassword(currentPassword, newPassword)
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(54.dp),
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.buttonColors(containerColor = DarkGreen),
-            enabled = currentPassword.isNotEmpty() && newPassword.isNotEmpty() && confirmMatch
+            enabled = currentPassword.isNotEmpty()
+                    && newPassword.isNotEmpty()
+                    && confirmMatch
+                    && !isLoading
         ) {
-            Text(
-                text = "CHANGE PASSWORD",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.ExtraBold,
-                color = Color.White
-            )
+            if (isLoading) {
+                CircularProgressIndicator(
+                    color = Color.White,
+                    modifier = Modifier.size(20.dp),
+                    strokeWidth = 2.dp
+                )
+            } else {
+                Text(
+                    text = "CHANGE PASSWORD",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = Color.White
+                )
+            }
         }
     }
 }
 
+// ← زيدناها هنا باش تحل مشكلة Unresolved reference
 @Composable
 fun PasswordTextField(
     label: String,
