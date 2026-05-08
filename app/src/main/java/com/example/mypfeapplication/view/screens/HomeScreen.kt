@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -39,7 +40,9 @@ fun HomeScreen(
     val assignedBike by viewModel.assignedBike.observeAsState()
     val email by viewModel.email.observeAsState("")
 
-    // LocationTracker
+    // ✅ Observer isLoading
+    val isLoading by viewModel.isLoading.observeAsState(true)
+
     val context = LocalContext.current
     val locationTracker = remember { LocationTracker(context) }
     val currentAddress by locationTracker.currentAddress.collectAsState()
@@ -72,6 +75,21 @@ fun HomeScreen(
 
     if (showHistory) {
         TripHistoryScreen(onBack = { viewModel.onBackFromHistory() })
+        return
+    }
+
+    // ✅ Affiche un spinner pendant que l'API check le bike
+    if (isLoading) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0xFFF0FBF6)),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator(
+                color = Color(0xFF2E7D32)
+            )
+        }
         return
     }
 

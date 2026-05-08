@@ -4,49 +4,112 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.mypfeapplication.repository.UserRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-class BikeViewModel : ViewModel() {
+@HiltViewModel
+class BikeViewModel @Inject constructor(
+    private val repository: UserRepository
+) : ViewModel() {
 
-    // ✅ État du trip
-    private val _tripStarted = MutableLiveData<Boolean>(true)
+    private val _tripStarted = MutableLiveData<Boolean>(false)
     val tripStarted: LiveData<Boolean> = _tripStarted
 
-    // ✅ Timer en secondes
     private val _seconds = MutableLiveData<Int>(0)
     val seconds: LiveData<Int> = _seconds
 
-    // ✅ Infos vélo
-    private val _bikeId = MutableLiveData<String>("ZE-0815")
-    val bikeId: LiveData<String> = _bikeId
+    private val _tripError = MutableLiveData<String?>(null)
+    val tripError: LiveData<String?> = _tripError
 
-    private val _batteryLevel = MutableLiveData<Float>(0.87f)
-    val batteryLevel: LiveData<Float> = _batteryLevel
+    private val _tripEnded = MutableLiveData<Boolean>(false)
+    val tripEnded: LiveData<Boolean> = _tripEnded
 
-    private val _location = MutableLiveData<String>("Avenue de l'Indépendance, Tunis")
-    val location: LiveData<String> = _location
+    private var timerJob: Job? = null
+    private var trackingJob: Job? = null
 
-    // ✅ Stats trip
-    private val _distance = MutableLiveData<String>("0.0 km")
-    val distance: LiveData<String> = _distance
+    // Position courante — mise à jour depuis BikeLocationScreen
+    private var currentLat: Double = 0.0
+    private var currentLng: Double = 0.0
 
-    private val _speed = MutableLiveData<String>("0 km/h")
-    val speed: LiveData<String> = _speed
-
-    fun startTrip() {
-        _tripStarted.value = true
-        _seconds.value = 0
-        startTimer()
+    fun updateLocation(lat: Double, lng: Double) {
+        currentLat = lat
+        currentLng = lng
+        android.util.Log.d("BIKE_VM", "Location updated: $lat, $lng")
     }
 
+    // ✅ startTrip — appelle d'abord l'API, puis démarre timer + tracking
+    fun startTrip() {
+        viewModelScope.launch {
+            android.util.Log.d("BIKE_VM", "Starting trip...")
+
+            // ✅ Vérifier que tripId est disponible
+            val tripId = repository.getTripId()
+            if (tripId == -1) {
+                _tripError.value = "No trip found — scan QR first"
+                android.util.Log.e("BIKE_VM", "startTrip: tripId = -1")
+                return@launch
+            }
+
+            // ✅ Appel API PUT /trips/:id/start
+            val success = repository.startTrip()
+            android.util.Log.d("BIKE_VM", "startTrip API result: $success")
+
+            if (success) {
+                _tripStarted.value = true
+                _seconds.value = 0
+                _tripError.value = null
+                startTimer()
+                startTracking()
+            } else {
+                // ✅ Démarre quand même côté UI même si API échoue (trip déjà active)
+                _tripStarted.value = true
+                _seconds.value = 0
+                startTimer()
+                startTracking()
+                android.util.Log.w("BIKE_VM", "startTrip API failed, continuing anyway")
+            }
+        }
+    }
+
+    // ✅ endTrip — arrête timer + tracking, puis appelle l'API
     fun endTrip() {
+        // Arrête immédiatement les coroutines
+        timerJob?.cancel()
+        trackingJob?.cancel()
+
         _tripStarted.value = false
         _seconds.value = 0
+        _tripEnded.value = true
+
+        // ✅ Envoie le dernier point GPS avant de terminer
+        viewModelScope.launch {
+            if (currentLat != 0.0) {
+                repository.sendTrackingPoint(currentLat, currentLng)
+                android.util.Log.d("BIKE_VM", "Last tracking point sent: $currentLat, $currentLng")
+            }
+
+            // ✅ Appel API PUT /trips/:id/end
+            val success = repository.endTrip(currentLat, currentLng)
+            android.util.Log.d("BIKE_VM", "endTrip API result: $success")
+
+            if (!success) {
+                android.util.Log.e("BIKE_VM", "endTrip API failed")
+            }
+        }
     }
 
+    fun resetTripEnded() {
+        _tripEnded.value = false
+    }
+
+    // ✅ Timer — s'arrête proprement avec Job
     private fun startTimer() {
-        viewModelScope.launch {
+        timerJob?.cancel()
+        timerJob = viewModelScope.launch {
             while (_tripStarted.value == true) {
                 delay(1000)
                 _seconds.value = (_seconds.value ?: 0) + 1
@@ -54,12 +117,35 @@ class BikeViewModel : ViewModel() {
         }
     }
 
-    // ✅ Formater le timer en HH:MM:SS
+    // ✅ Tracking — envoie position toutes les 30s
+    private fun startTracking() {
+        trackingJob?.cancel()
+        trackingJob = viewModelScope.launch {
+            while (_tripStarted.value == true) {
+                delay(30_000L)
+                if (_tripStarted.value == true) {
+                    if (currentLat != 0.0 && currentLng != 0.0) {
+                        val sent = repository.sendTrackingPoint(currentLat, currentLng)
+                        android.util.Log.d("BIKE_VM", "Tracking point sent: $sent ($currentLat, $currentLng)")
+                    } else {
+                        android.util.Log.w("BIKE_VM", "Location not available yet, skipping tracking point")
+                    }
+                }
+            }
+        }
+    }
+
     fun getFormattedTime(): String {
         val s = _seconds.value ?: 0
         val h = s / 3600
         val m = (s % 3600) / 60
         val sec = s % 60
         return "%02d:%02d:%02d".format(h, m, sec)
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        timerJob?.cancel()
+        trackingJob?.cancel()
     }
 }

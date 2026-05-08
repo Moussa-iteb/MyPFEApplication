@@ -15,6 +15,7 @@ import com.example.mypfeapplication.view.screens.ChangePasswordScreen
 import com.example.mypfeapplication.view.screens.EditProfileScreen
 import com.example.mypfeapplication.view.screens.HomeScreen
 import com.example.mypfeapplication.view.screens.QrScannerScreen
+import com.example.mypfeapplication.view.screens.ScanMode        // ✅ import ScanMode
 import com.example.mypfeapplication.view.screens.LoginScreen
 import com.example.mypfeapplication.view.screens.NotificationsScreen
 import com.example.mypfeapplication.view.screens.WelcomeScreen
@@ -75,7 +76,7 @@ class MainActivity : ComponentActivity() {
                         onEditProfile = { navController.navigate("edit_profile") },
                         onChangePassword = { navController.navigate("change_password") },
                         onNotifications = { navController.navigate("notifications") },
-                        onScanQr = { navController.navigate("qr_scanner") }
+                        onScanQr = { navController.navigate("scan_bike") }  // ✅ scan_bike
                     )
                 }
 
@@ -114,26 +115,46 @@ class MainActivity : ComponentActivity() {
                     )
                 }
 
-                composable("notifications") {
-                    NotificationsScreen(
-                        onBack = { navController.popBackStack() }
-                    )
-                }
-
-                composable("qr_scanner") { backStackEntry ->
-                    val homeEntry = remember(backStackEntry) {
+                // ✅ SCAN BIKE — utilise le backstack "home" pour partager le même ViewModel
+                composable("scan_bike") {
+                    val homeEntry = remember(it) {
                         navController.getBackStackEntry("home")
                     }
                     val viewModel: HomeViewModel = hiltViewModel(homeEntry)
                     QrScannerScreen(
                         viewModel = viewModel,
+                        scanMode = ScanMode.BIKE,
+                        onBack = { navController.popBackStack() },
+                        onScanSuccess = {
+                            navController.navigate("scan_trip") {
+                                popUpTo("scan_bike") { inclusive = true }  // ✅ retire scan_bike du backstack
+                            }
+                        }
+                    )
+                }
+
+                // ✅ SCAN TRIP
+                composable("scan_trip") {
+                    val homeEntry = remember(it) {
+                        navController.getBackStackEntry("home")
+                    }
+                    val viewModel: HomeViewModel = hiltViewModel(homeEntry)
+                    QrScannerScreen(
+                        viewModel = viewModel,
+                        scanMode = ScanMode.TRIP,
                         onBack = { navController.popBackStack() },
                         onScanSuccess = {
                             navController.navigate("home") {
-                                popUpTo("home") { inclusive = false }
+                                popUpTo("home") { inclusive = true }
                                 launchSingleTop = true
                             }
                         }
+                    )
+                }
+
+                composable("notifications") {
+                    NotificationsScreen(
+                        onBack = { navController.popBackStack() }
                     )
                 }
             }

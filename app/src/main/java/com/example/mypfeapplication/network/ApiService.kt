@@ -1,11 +1,12 @@
 package com.example.mypfeapplication.network
 
 import com.example.mypfeapplication.model.AuthResponse
-
 import com.example.mypfeapplication.model.LoginRequest
 import com.example.mypfeapplication.model.RegisterRequest
 import com.example.mypfeapplication.model.ScanBikeRequest
 import com.example.mypfeapplication.model.ScanBikeResponse
+import com.example.mypfeapplication.model.ScanTripRequest   // ✅ ajou
+import com.example.mypfeapplication.model.ScanTripResponse  // ✅ ajouté
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
@@ -17,49 +18,64 @@ import retrofit2.http.Path
 interface ApiService {
 
     @POST("auth/login/user")
-    suspend fun login(
-        @Body request: LoginRequest
-    ): Response<AuthResponse>
+    suspend fun login(@Body request: LoginRequest): Response<AuthResponse>
 
     @POST("auth/register")
-    suspend fun register(
-        @Body request: RegisterRequest
-    ): Response<AuthResponse>
+    suspend fun register(@Body request: RegisterRequest): Response<AuthResponse>
 
     @POST("auth/forgot-password/user")
-    suspend fun forgotPasswordUser(
-        @Body body: Map<String, String>
-    ): Response<Any>
+    suspend fun forgotPasswordUser(@Body body: Map<String, String>): Response<Any>
 
     @POST("auth/reset-password/user")
-    suspend fun resetPasswordUser(
-        @Body body: Map<String, String>
-    ): Response<Any>
-
-    @POST("bikes/scan")
-    suspend fun scanBike(
-        @Header("Authorization") token: String,
-        @Body request: ScanBikeRequest
-    ): Response<ScanBikeResponse>
+    suspend fun resetPasswordUser(@Body body: Map<String, String>): Response<Any>
 
     @PUT("bike-assignments/my/return")
-    suspend fun returnMyBike(
-        @Header("Authorization") token: String
-    ): Response<Any>
+    suspend fun returnMyBike(@Header("Authorization") token: String): Response<Any>
+
     @GET("bike-assignments/my/active")
-    suspend fun getMyActiveBike(
-        @Header("Authorization") token: String
-    ): Response<ScanBikeResponse>
+    suspend fun getMyActiveBike(@Header("Authorization") token: String): Response<ScanBikeResponse>
+
     @PUT("users/{id}")
     suspend fun updateUser(
         @Header("Authorization") token: String,
         @Path("id") userId: Int,
         @Body body: Map<String, String>
     ): Response<Any>
+
     @PUT("users/{id}/password")
     suspend fun changePassword(
         @Header("Authorization") token: String,
         @Path("id") userId: Int,
         @Body body: Map<String, String>
     ): Response<Unit>
+    @POST("trips/tracking/{tripUserId}")
+    suspend fun addTrackingPoint(
+        @Header("Authorization") token: String,
+        @Path("tripUserId") tripUserId: Int,
+        @Body body: Map<String, @JvmSuppressWildcards Any>
+    ): Response<Any>
+    @POST("bike-assignments/scan")
+    suspend fun scanBike(
+        @Header("Authorization") token: String,
+        @Body request: ScanBikeRequest
+    ): Response<ScanBikeResponse>
+
+    @POST("trips/{tripId}/users")
+    suspend fun joinTrip(
+        @Header("Authorization") token: String,
+        @Path("tripId") tripId: Int,
+        @Body body: ScanTripRequest
+    ): Response<ScanTripResponse>
+    @PUT("trips/{id}/start")
+    suspend fun startTrip(
+        @Header("Authorization") token: String,
+        @Path("id") tripId: Int
+    ): Response<Any>
+
+    @PUT("trips/{id}/end")
+    suspend fun endTrip(
+        @Header("Authorization") token: String,
+        @Path("id") tripId: Int,
+        @Body body: Map<String, @JvmSuppressWildcards Any>
+    ): Response<Any>
 }

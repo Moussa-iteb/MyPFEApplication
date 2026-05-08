@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.mypfeapplication.model.BikeData
 import com.example.mypfeapplication.model.ScanBikeResponse
+import com.example.mypfeapplication.model.ScanTripResponse
 import com.example.mypfeapplication.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
@@ -40,6 +41,22 @@ class HomeViewModel @Inject constructor(
     private val _assignedBike = MutableLiveData<BikeData?>()
     val assignedBike: LiveData<BikeData?> = _assignedBike
 
+    private val _isLoading = MutableLiveData<Boolean>(true)
+    val isLoading: LiveData<Boolean> = _isLoading
+
+    // ===== TRIP =====
+    private val _scanTripResult = MutableLiveData<ScanTripResponse?>()
+    val scanTripResult: LiveData<ScanTripResponse?> = _scanTripResult
+
+    private val _isScanningTrip = MutableLiveData<Boolean>(false)
+    val isScanningTrip: LiveData<Boolean> = _isScanningTrip
+
+    private val _hasTrip = MutableLiveData<Boolean>(false)
+    val hasTrip: LiveData<Boolean> = _hasTrip
+
+    private val _activeTripUserId = MutableLiveData<Int?>()
+    val activeTripUserId: LiveData<Int?> = _activeTripUserId
+
     init {
         loadUsername()
         checkActiveBike()
@@ -47,10 +64,19 @@ class HomeViewModel @Inject constructor(
 
     private fun checkActiveBike() {
         viewModelScope.launch {
-            val result = repository.getMyActiveBike()
-            if (result?.success == true) {
-                _hasBike.value = true
-                _assignedBike.value = result.data?.bike
+            _isLoading.value = true
+            try {
+                val result = repository.getMyActiveBike()
+                if (result?.success == true) {
+                    _hasBike.value = true
+                    _assignedBike.value = result.data?.bike
+                } else {
+                    _hasBike.value = false
+                }
+            } catch (e: Exception) {
+                _hasBike.value = false
+            } finally {
+                _isLoading.value = false
             }
         }
     }
@@ -58,25 +84,12 @@ class HomeViewModel @Inject constructor(
     private fun loadUsername() {
         _username.value = repository.getUsername()
         _email.value = repository.getEmail()
-        _hasBike.value = false
     }
 
-    fun onTabSelected(tab: Int) {
-        _selectedTab.value = tab
-    }
-
-    fun onViewHistory() {
-        _showHistory.value = true
-    }
-
-    fun onBackFromHistory() {
-        _showHistory.value = false
-    }
-
-    fun setHasBike(value: Boolean) {
-        _hasBike.value = value
-    }
-
+    fun onTabSelected(tab: Int) { _selectedTab.value = tab }
+    fun onViewHistory() { _showHistory.value = true }
+    fun onBackFromHistory() { _showHistory.value = false }
+    fun setHasBike(value: Boolean) { _hasBike.value = value }
     fun getUsername(): String = repository.getUsername()
     fun getBikeId(): String = _assignedBike.value?.id?.toString() ?: ""
     fun getBatteryLevel(): Float = _assignedBike.value?.batteryLevel?.toFloat() ?: 0f
@@ -86,6 +99,8 @@ class HomeViewModel @Inject constructor(
         _hasBike.value = false
         _assignedBike.value = null
         _scanResult.value = null
+        _scanTripResult.value = null
+        _activeTripUserId.value = null
         repository.logout()
     }
 
@@ -102,9 +117,26 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    fun clearScanResult() {
-        _scanResult.value = null
+    fun clearScanResult() { _scanResult.value = null }
+
+    // ✅ Une seule fonction onTripScanned
+    fun onTripScanned(qrCode: String) {
+        viewModelScope.launch {
+            _isScanningTrip.value = true
+            val bikeId = _assignedBike.value?.id ?: 0
+            val result = repository.scanTrip(qrCode, bikeId)
+            _scanTripResult.value = result
+            if (result?.success == true) {
+                _hasTrip.value = true
+                _activeTripUserId.value = result.data?.id
+                result.data?.id?.let { repository.saveTripUserId(it) }
+
+            }
+            _isScanningTrip.value = false
+        }
     }
+
+    fun clearScanTripResult() { _scanTripResult.value = null }
 
     fun returnBike(onSuccess: () -> Unit = {}) {
         viewModelScope.launch {
@@ -112,6 +144,8 @@ class HomeViewModel @Inject constructor(
             if (success) {
                 _hasBike.value = false
                 _assignedBike.value = null
+                _hasTrip.value = false
+                _activeTripUserId.value = null
                 onSuccess()
             }
         }

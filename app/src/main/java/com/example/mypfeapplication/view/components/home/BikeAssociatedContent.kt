@@ -24,7 +24,7 @@ import com.example.mypfeapplication.R
 import com.example.mypfeapplication.view.screens.GrayText
 import com.example.mypfeapplication.view.screens.GreenMain
 
-private const val MAPS_API_KEY = "YOUR_GOOGLE_MAPS_API_KEY"
+private const val MAPS_API_KEY = "AIzaSyACxir1C1OBVF3hS_RYgiier6DnXfDtiaU"
 
 @Composable
 fun BikeAssociatedContent(

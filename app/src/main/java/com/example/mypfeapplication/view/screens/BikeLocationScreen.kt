@@ -29,15 +29,19 @@ fun BikeLocationScreen(
 ) {
     val bikeLocation = LatLng(36.8008, 10.1797)
 
-    // ← context و locationTracker أولاً
     val context = LocalContext.current
     val locationTracker = remember { LocationTracker(context) }
 
-    // ← بعدها باقي الـ val
-    val tripStarted by viewModel.tripStarted.observeAsState(true)
-
-
+    val tripStarted by viewModel.tripStarted.observeAsState(false)
     val locationAddress by locationTracker.currentAddress.collectAsState()
+    val currentLocation by locationTracker.currentLocation.collectAsState()
+
+    // ✅ Passe la position au ViewModel dès qu'elle change
+    LaunchedEffect(currentLocation) {
+        currentLocation?.let { (lat, lng) ->
+            viewModel.updateLocation(lat, lng)
+        }
+    }
 
     LaunchedEffect(Unit) {
         locationTracker.startTracking()
