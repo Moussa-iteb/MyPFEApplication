@@ -41,8 +41,8 @@ jobs:
 
       # ─── Upload APK artifact ──────────────────────────────────────
       - name: Upload APK
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: SmartRide-Debug-APK
-          path: app/build/outputs/apk/debug/app-debug.apk
-          retention-days: 7
+            name: SmartRide-Debug-APK
+            path: app/build/outputs/apk/debug/app-debug.apk
+            retention-days: 7
