@@ -46,32 +46,28 @@ class BikeViewModel @Inject constructor(
         viewModelScope.launch {
             android.util.Log.d("BIKE_VM", "Starting trip...")
 
-            // ✅ Vérifier que tripId est disponible
-            val tripId = repository.getTripId()
+            // ✅ si tripId manquant → fetch depuis API avant de démarrer
+            var tripId = repository.getTripId()
             if (tripId == -1) {
-                _tripError.value = "No trip found — scan QR first"
-                android.util.Log.e("BIKE_VM", "startTrip: tripId = -1")
+                android.util.Log.d("BIKE_VM", "tripId = -1, fetching active trip from API...")
+                repository.fetchAndSaveActiveTrip()
+                tripId = repository.getTripId()
+            }
+
+            if (tripId == -1) {
+                _tripError.value = "No trip found — contact admin"
+                android.util.Log.e("BIKE_VM", "startTrip: still no tripId after fetch")
                 return@launch
             }
 
-            // ✅ Appel API PUT /trips/:id/start
             val success = repository.startTrip()
             android.util.Log.d("BIKE_VM", "startTrip API result: $success")
 
-            if (success) {
-                _tripStarted.value = true
-                _seconds.value = 0
-                _tripError.value = null
-                startTimer()
-                startTracking()
-            } else {
-                // ✅ Démarre quand même côté UI même si API échoue (trip déjà active)
-                _tripStarted.value = true
-                _seconds.value = 0
-                startTimer()
-                startTracking()
-                android.util.Log.w("BIKE_VM", "startTrip API failed, continuing anyway")
-            }
+            _tripStarted.value = true
+            _seconds.value = 0
+            _tripError.value = null
+            startTimer()
+            startTracking()
         }
     }
 

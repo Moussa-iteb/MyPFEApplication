@@ -7,6 +7,10 @@ import com.example.mypfeapplication.model.ScanBikeRequest
 import com.example.mypfeapplication.model.ScanBikeResponse
 import com.example.mypfeapplication.model.ScanTripRequest
 import com.example.mypfeapplication.model.ScanTripResponse
+import com.example.mypfeapplication.model.TripDetailsResponse
+import com.example.mypfeapplication.model.TripItem
+import com.example.mypfeapplication.model.AllTripsResponse
+import com.example.mypfeapplication.model.UserTripData
 import com.example.mypfeapplication.network.ApiClient
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
@@ -107,8 +111,6 @@ class UserRepository @Inject constructor(
         }
     }
 
-    // ─── Profile ──────────────────────────────────────────────────────────────
-
     suspend fun updateProfile(username: String, email: String, phone: String): Boolean {
         return try {
             val token  = getToken()  ?: return false
@@ -156,6 +158,91 @@ class UserRepository @Inject constructor(
         }
     }
 
+    suspend fun cancelTrip(): Boolean {
+        return try {
+            val token  = getToken()  ?: return false
+            val tripId = getTripId()
+            val userId = getUserId()
+            if (tripId == -1) {
+                android.util.Log.e("TRIP", "cancelTrip: tripId not found")
+                return false
+            }
+
+            val response = ApiClient.apiService.cancelTripUser(
+                token  = "Bearer $token",
+                tripId = tripId,
+                userId = userId
+            )
+            android.util.Log.d("TRIP", "cancelTrip response: ${response.code()}")
+
+            if (response.isSuccessful) {
+                saveTripId(-1)
+                saveTripUserId(-1)
+            }
+
+            response.isSuccessful
+        } catch (e: Exception) {
+            android.util.Log.e("TRIP", "cancelTrip error: ${e.message}")
+            false
+        }
+    }
+
+    suspend fun fetchAndSaveActiveTrip() {
+        try {
+            val token = getToken() ?: return
+            val userId = getUserId()
+
+            val response = ApiClient.apiService.getMyActiveTrip("Bearer $token")
+            if (response.isSuccessful) {
+                val trip = response.body()?.data
+                if (trip != null) {
+                    saveTripId(trip.id)
+                    android.util.Log.d("TRIP", "✅ saved tripId=${trip.id}")
+
+                    val tripUser = trip.tripUsers?.find { it.userId == userId }
+                    if (tripUser != null) {
+                        saveTripUserId(tripUser.id)
+                        android.util.Log.d("TRIP", "✅ saved tripUserId=${tripUser.id}")
+                    } else {
+                        val first = trip.tripUsers?.firstOrNull()
+                        if (first != null) {
+                            saveTripUserId(first.id)
+                            android.util.Log.d("TRIP", "✅ saved tripUserId (first)=${first.id}")
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("TRIP", "fetchAndSaveActiveTrip error: ${e.message}")
+        }
+    }
+
+    suspend fun getUserTrips(): List<UserTripData> {
+        return try {
+            val token  = getToken()  ?: return emptyList()
+            val userId = getUserId()
+            if (userId == -1) return emptyList()
+
+            val response = ApiClient.apiService.getUserTrips(
+                token  = "Bearer $token",
+                userId = userId
+            )
+
+            if (response.isSuccessful) {
+                val allTrips = response.body()?.data ?: emptyList()
+                allTrips.mapNotNull { trip ->
+                    val myTripUser = trip.tripUsers?.find { it.userId == userId }
+                    if (myTripUser != null) {
+                        trip.copy(tripUsers = listOf(myTripUser))
+                    } else null
+                }
+            } else emptyList()
+        } catch (e: Exception) {
+            android.util.Log.e("TRIPS", "getUserTrips error: ${e.message}")
+            emptyList()
+        }
+    }
+
     suspend fun getMyActiveBike(): ScanBikeResponse? {
         return try {
             val token = getToken() ?: return null
@@ -183,7 +270,6 @@ class UserRepository @Inject constructor(
             val token = getToken() ?: return null
             val json  = JSONObject(qrCode)
 
-            // استخرج tripId من QR — دعم كل الصيغ الممكنة
             val tripId = when {
                 json.has("tripId")  -> json.getInt("tripId")
                 json.has("trip_id") -> json.getInt("trip_id")
@@ -194,14 +280,12 @@ class UserRepository @Inject constructor(
                 }
             }
 
-            // bikeId: من QR إذا موجود وصحيح، وإلا من البارامتر
             val bikeIdToUse = if (json.has("bikeId") && json.getInt("bikeId") != 0)
                 json.getInt("bikeId") else bikeId
 
-            // userId: دائماً المستخدم الحالي (صاحب الهاتف)
             val currentUserId = getUserId()
 
-            // احفظ tripId قبل الـ API call
+            saveTripUserId(-1)
             saveTripId(tripId)
 
             android.util.Log.d("SCAN_TRIP", "tripId=$tripId, userId=$currentUserId, bikeId=$bikeIdToUse")
@@ -215,7 +299,6 @@ class UserRepository @Inject constructor(
                 )
             )
 
-            // ✅ سجّل الـ error body الكامل لكل الحالات غير الناجحة
             val rawError = if (!response.isSuccessful) {
                 response.errorBody()?.string().also { err ->
                     android.util.Log.e("SCAN_TRIP", "HTTP ${response.code()} RAW ERROR: $err")
@@ -226,39 +309,57 @@ class UserRepository @Inject constructor(
 
             when {
                 response.isSuccessful -> {
-                    // احفظ tripUserId من الـ response — يُستخدم للـ tracking
-                    response.body()?.data?.id?.let { saveTripUserId(it) }
-                    android.util.Log.d("SCAN_TRIP", "✅ Join success, tripUserId=${getTripUserId()}")
+                    val tripUserId = response.body()?.data?.id
+                    tripUserId?.let {
+                        saveTripUserId(it)
+                        android.util.Log.d("SCAN_TRIP", "✅ Saved tripUserId=$it")
+                    }
                     response.body()
                 }
 
-                // 409 = مسبقاً انضم، نكمل بدون خطأ
                 response.code() == 409 -> {
-                    android.util.Log.d("SCAN_TRIP", "Already joined, continuing...")
+                    android.util.Log.d("SCAN_TRIP", "409 — fetching existing tripUserId from server...")
+                    try {
+                        val detailsResponse = ApiClient.apiService.getTripDetails(
+                            token  = "Bearer $token",
+                            tripId = tripId
+                        )
+                        if (detailsResponse.isSuccessful) {
+                            val tripUsers = detailsResponse.body()?.data?.tripUsers
+                            val found = tripUsers?.find { it.userId == currentUserId }
+                            if (found != null) {
+                                saveTripUserId(found.id)
+                                android.util.Log.d("SCAN_TRIP", "✅ Found existing tripUserId=${found.id}")
+                            } else {
+                                android.util.Log.e("SCAN_TRIP", "❌ userId=$currentUserId not found in tripUsers")
+                            }
+                        } else {
+                            android.util.Log.e("SCAN_TRIP", "getTripDetails failed: ${detailsResponse.code()}")
+                        }
+                    } catch (e: Exception) {
+                        android.util.Log.e("SCAN_TRIP", "Failed to fetch tripDetails: ${e.message}")
+                    }
                     ScanTripResponse(success = true, message = "Trip already active", data = null)
                 }
 
-                // 400 = بيانات خاطئة (bikeId أو userId مش صحيح في الـ DB)
                 response.code() == 400 -> {
                     val msg = try {
                         JSONObject(rawError ?: "").getString("message")
-                    } catch (e: Exception) { "Bad request — check bikeId/userId" }
-                    android.util.Log.e("SCAN_TRIP", "400 Bad Request: $msg")
+                    } catch (e: Exception) { "Bad request" }
+                    android.util.Log.e("SCAN_TRIP", "400: $msg")
                     ScanTripResponse(false, msg, null)
                 }
 
-                // 404 = الـ trip مش موجودة
                 response.code() == 404 -> {
                     android.util.Log.e("SCAN_TRIP", "404 Trip not found, tripId=$tripId")
                     ScanTripResponse(false, "Trip #$tripId not found", null)
                 }
 
-                // 500 = خطأ في الـ server — الـ rawError يحتوي السبب الحقيقي
                 response.code() == 500 -> {
                     val msg = try {
                         JSONObject(rawError ?: "").optString("message", "Internal server error")
                     } catch (e: Exception) { "Internal server error" }
-                    android.util.Log.e("SCAN_TRIP", "500 Server Error details: $rawError")
+                    android.util.Log.e("SCAN_TRIP", "500: $rawError")
                     ScanTripResponse(false, "Server error: $msg", null)
                 }
 
@@ -360,6 +461,33 @@ class UserRepository @Inject constructor(
         }
     }
 
+    // ─── Explore ──────────────────────────────────────────────────────────────
+
+    suspend fun getOpenTrips(): List<TripItem> {
+        return try {
+            val token  = getToken() ?: return emptyList()
+            val userId = getUserId()
+            val response = ApiClient.apiService.getAllTrips("Bearer $token")
+            if (response.isSuccessful) {
+                val all = response.body()?.data ?: emptyList()
+                // ← زيد هذا باش نشوف البيانات
+                all.forEach { trip ->
+                    android.util.Log.d("TRIP_RAW",
+                        "Trip#${trip.id} status='${trip.status}' | " +
+                                "tripUsers=${trip.tripUsers?.map { "userId=${it.userId} status=${it.status}" }}"
+                    )
+                }
+                all // ← مؤقتاً رجّع كل شي بدون filter
+            } else {
+                android.util.Log.e("EXPLORE", "HTTP ${response.code()}")
+                emptyList()
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("EXPLORE", "error: ${e.message}")
+            emptyList()
+        }
+    }
+
     // ─── SharedPrefs helpers ──────────────────────────────────────────────────
 
     fun getToken(): String?          = prefs.getString("token", null)
@@ -387,4 +515,5 @@ class UserRepository @Inject constructor(
     fun saveTripUserId(id: Int)      = prefs.edit().putInt("tripUserId", id).apply()
 
     fun logout()                     = prefs.edit().clear().apply()
+
 }

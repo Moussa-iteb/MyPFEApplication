@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "28187051774",
+    "project_id": "smartride-7e6ee",
+    "storage_bucket": "smartride-7e6ee.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:28187051774:android:321a051f23da7de95e87af",
+        "android_client_info": {
+          "package_name": "com.example.mypfeapplication"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBunRgIHpQDcIHouDoiZz1y6t32ucpcqqQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

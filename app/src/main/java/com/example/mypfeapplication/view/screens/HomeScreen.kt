@@ -166,7 +166,8 @@ fun HomeScreen(
                         lastAddress = currentAddress,
                         onViewHistory = { viewModel.onViewHistory() },
                         onStartTrip = onStartTrip,
-                        onLogout = { viewModel.returnBike() }
+                        onLogout = { viewModel.returnBike() },
+                        onCancelTrip = { viewModel.cancelTrip() }
                     ) else NoBikeContent(onScanQr = onScanQr)
                     1 -> ExploreScreen()
                     2 -> MyTripsScreen()

@@ -37,7 +37,8 @@ fun BikeAssociatedContent(
     lastAddress: String = "Fetching address...",
     onViewHistory: () -> Unit = {},
     onStartTrip: () -> Unit = {},
-    onLogout: () -> Unit = {}
+    onLogout: () -> Unit = {},
+    onCancelTrip: () -> Unit = {}
 ) {
     // بناء رابط الـ Static Map من الـ lastLocation
     val mapUrl = if (lastLocation != "Fetching location..." && lastLocation != "Unknown") {
@@ -276,6 +277,7 @@ fun BikeAssociatedContent(
 
         Spacer(modifier = Modifier.height(20.dp))
 
+        // Start + End
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -294,12 +296,7 @@ fun BikeAssociatedContent(
                     colorFilter = ColorFilter.tint(Color.White)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Start Trip",
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 15.sp
-                )
+                Text(text = "Start Trip", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
             }
             OutlinedButton(
                 onClick = onLogout,
@@ -316,6 +313,26 @@ fun BikeAssociatedContent(
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(text = "End Trip", color = Color(0xFF555555), fontSize = 15.sp)
             }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+// ✅ Bouton Cancel Trip
+        Button(
+            onClick = onCancelTrip,
+            modifier = Modifier.fillMaxWidth().height(56.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE74C3C))
+        ) {
+            Image(
+                painter = painterResource(id = R.drawable.stop),
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+                contentScale = ContentScale.Fit,
+                colorFilter = ColorFilter.tint(Color.White)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(text = "Cancel Trip", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
         }
 
         Spacer(modifier = Modifier.height(12.dp))

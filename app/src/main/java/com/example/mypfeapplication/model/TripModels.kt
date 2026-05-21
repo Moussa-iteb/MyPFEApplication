@@ -27,3 +27,13 @@ data class TripUserData(
     @SerializedName("joined_at")
     val joinedAt: String?
 )
+data class TripDetailsResponse(
+    val success: Boolean,
+    val data: TripDetailData?
+)
+
+data class TripDetailData(
+    val id: Int,
+    @SerializedName("trip_users")
+    val tripUsers: List<TripUserData>?
+)

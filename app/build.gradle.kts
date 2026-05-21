@@ -4,6 +4,7 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
     id("com.google.dagger.hilt.android")
     id("kotlin-kapt")
+
 }
 android {
     namespace = "com.example.mypfeapplication"
@@ -55,6 +56,10 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
     implementation("com.google.android.gms:play-services-location:21.0.1")
     implementation("androidx.compose.runtime:runtime-livedata:1.6.0")
+    // Firebase
+    implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
+    implementation("com.google.firebase:firebase-analytics-ktx")
+    implementation("com.google.firebase:firebase-messaging-ktx")
 
     // Navigation
     implementation("androidx.navigation:navigation-compose:2.7.7")
@@ -89,7 +94,8 @@ dependencies {
 
     // Accompanist
     implementation("com.google.accompanist:accompanist-permissions:0.34.0")
-
+    implementation("com.google.maps.android:maps-compose:2.11.4")
+    implementation("com.google.android.gms:play-services-maps:18.1.0")
     // Hilt
     implementation("com.google.dagger:hilt-android:2.56.1")
     kapt("com.google.dagger:hilt-android-compiler:2.56.1")
@@ -103,4 +109,6 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+    apply(plugin = "com.google.gms.google-services")
+
 }

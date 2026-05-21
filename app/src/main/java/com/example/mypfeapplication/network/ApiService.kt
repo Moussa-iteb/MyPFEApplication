@@ -5,8 +5,11 @@ import com.example.mypfeapplication.model.LoginRequest
 import com.example.mypfeapplication.model.RegisterRequest
 import com.example.mypfeapplication.model.ScanBikeRequest
 import com.example.mypfeapplication.model.ScanBikeResponse
-import com.example.mypfeapplication.model.ScanTripRequest   // ✅ ajou
-import com.example.mypfeapplication.model.ScanTripResponse  // ✅ ajouté
+import com.example.mypfeapplication.model.ScanTripRequest
+import com.example.mypfeapplication.model.ScanTripResponse
+import com.example.mypfeapplication.model.TripDetailsResponse
+import com.example.mypfeapplication.model.UserTripsResponse
+import com.example.mypfeapplication.model.AllTripsResponse
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
@@ -59,23 +62,46 @@ interface ApiService {
         @Header("Authorization") token: String,
         @Body request: ScanBikeRequest
     ): Response<ScanBikeResponse>
-
+    @GET("trips/{id}")
+    suspend fun getTripDetails(
+        @Header("Authorization") token: String,
+        @Path("id") tripId: Int
+    ): Response<TripDetailsResponse>
     @POST("trips/{tripId}/users")
     suspend fun joinTrip(
         @Header("Authorization") token: String,
         @Path("tripId") tripId: Int,
         @Body body: ScanTripRequest
     ): Response<ScanTripResponse>
+    @GET("trips/my-active")
+    suspend fun getMyActiveTrip(
+        @Header("Authorization") token: String
+    ): Response<TripDetailsResponse>
     @PUT("trips/{id}/start")
     suspend fun startTrip(
         @Header("Authorization") token: String,
         @Path("id") tripId: Int
     ): Response<Any>
-
+    @PUT("trips/{tripId}/users/{userId}/cancel")
+    suspend fun cancelTripUser(
+        @Header("Authorization") token: String,
+        @Path("tripId") tripId: Int,
+        @Path("userId") userId: Int
+    ): Response<Any>
     @PUT("trips/{id}/end")
     suspend fun endTrip(
         @Header("Authorization") token: String,
         @Path("id") tripId: Int,
         @Body body: Map<String, @JvmSuppressWildcards Any>
     ): Response<Any>
+    @GET("trips/user/{userId}")
+    suspend fun getUserTrips(
+        @Header("Authorization") token: String,
+        @Path("userId") userId: Int
+    ): Response<UserTripsResponse>
+    @GET("trips")
+    suspend fun getAllTrips(
+        @Header("Authorization") token: String
+    ): Response<AllTripsResponse>
+
 }

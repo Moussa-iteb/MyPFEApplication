@@ -137,7 +137,18 @@ class HomeViewModel @Inject constructor(
     }
 
     fun clearScanTripResult() { _scanTripResult.value = null }
-
+    fun cancelTrip(onSuccess: () -> Unit = {}) {
+        viewModelScope.launch {
+            val success = repository.cancelTrip()
+            if (success) {
+                _hasTrip.value = false
+                _activeTripUserId.value = null
+                _hasBike.value = false        // ✅ reset bike aussi
+                _assignedBike.value = null    // ✅ retourne à l'interface scan
+                onSuccess()
+            }
+        }
+    }
     fun returnBike(onSuccess: () -> Unit = {}) {
         viewModelScope.launch {
             val success = repository.returnBike()
