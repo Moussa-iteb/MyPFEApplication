@@ -10,11 +10,18 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-
+import android.content.Context
+import androidx.work.*
+import com.example.mypfeapplication.database.AppDatabase
+import com.example.mypfeapplication.database.TrackingPointEntity
+import com.example.mypfeapplication.workers.SyncWorker
+import androidx.lifecycle.AndroidViewModel
+import android.app.Application
 @HiltViewModel
 class BikeViewModel @Inject constructor(
-    private val repository: UserRepository
-) : ViewModel() {
+    private val repository: UserRepository,
+    application: android.app.Application
+) : AndroidViewModel(application) {
 
     private val _tripStarted = MutableLiveData<Boolean>(false)
     val tripStarted: LiveData<Boolean> = _tripStarted
@@ -73,7 +80,6 @@ class BikeViewModel @Inject constructor(
 
     // ✅ endTrip — arrête timer + tracking, puis appelle l'API
     fun endTrip() {
-        // Arrête immédiatement les coroutines
         timerJob?.cancel()
         trackingJob?.cancel()
 
@@ -81,23 +87,21 @@ class BikeViewModel @Inject constructor(
         _seconds.value = 0
         _tripEnded.value = true
 
-        // ✅ Envoie le dernier point GPS avant de terminer
+        // ← احفظ فوراً قبل أي coroutine — synchronous
+        repository.savePendingEndTrip(currentLat, currentLng)
+
+        // شغل SyncWorker — يعمل حتى لو الـ process مات
+        scheduleSyncWork()
+
+        // حاول مباشرة في background
         viewModelScope.launch {
             if (currentLat != 0.0) {
                 repository.sendTrackingPoint(currentLat, currentLng)
-                android.util.Log.d("BIKE_VM", "Last tracking point sent: $currentLat, $currentLng")
             }
-
-            // ✅ Appel API PUT /trips/:id/end
             val success = repository.endTrip(currentLat, currentLng)
-            android.util.Log.d("BIKE_VM", "endTrip API result: $success")
-
-            if (!success) {
-                android.util.Log.e("BIKE_VM", "endTrip API failed")
-            }
+            android.util.Log.d("BIKE_VM", "endTrip direct result: $success")
         }
     }
-
     fun resetTripEnded() {
         _tripEnded.value = false
     }
@@ -113,24 +117,70 @@ class BikeViewModel @Inject constructor(
         }
     }
 
-    // ✅ Tracking — envoie position toutes les 30s
+
     private fun startTracking() {
         trackingJob?.cancel()
         trackingJob = viewModelScope.launch {
+            val db  = AppDatabase.getInstance(getApplication())
+            val dao = db.trackingPointDao()
+
             while (_tripStarted.value == true) {
                 delay(30_000L)
-                if (_tripStarted.value == true) {
-                    if (currentLat != 0.0 && currentLng != 0.0) {
+                if (_tripStarted.value == true && currentLat != 0.0 && currentLng != 0.0) {
+
+                    // تحقق من الـ internet
+                    val hasInternet = isInternetAvailable()
+
+                    if (hasInternet) {
+                        // أرسل مباشرة للـ API
                         val sent = repository.sendTrackingPoint(currentLat, currentLng)
-                        android.util.Log.d("BIKE_VM", "Tracking point sent: $sent ($currentLat, $currentLng)")
+                        android.util.Log.d("BIKE_VM", "Online — point sent: $sent")
+
+                        // sync الـ points القديمة إذا موجودة
+                        scheduleSyncWork()
                     } else {
-                        android.util.Log.w("BIKE_VM", "Location not available yet, skipping tracking point")
+                        // احفظ محلياً في Room
+                        val tripUserId = repository.getTripUserId()
+                        if (tripUserId != -1) {
+                            dao.insert(
+                                TrackingPointEntity(
+                                    tripUserId = tripUserId,
+                                    latitude   = currentLat,
+                                    longitude  = currentLng
+                                )
+                            )
+                            android.util.Log.d("BIKE_VM", "Offline — point saved locally")
+                        }
                     }
                 }
             }
         }
     }
 
+    private fun isInternetAvailable(): Boolean {
+        val cm = getApplication<android.app.Application>()
+            .getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+        val network = cm.activeNetwork ?: return false
+        val caps    = cm.getNetworkCapabilities(network) ?: return false
+        return caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET)
+    }
+
+    private fun scheduleSyncWork() {
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
+
+        val syncRequest = OneTimeWorkRequestBuilder<SyncWorker>()
+            .setConstraints(constraints)
+            .build()
+
+        WorkManager.getInstance(getApplication())  // ← بدّل this بـ getApplication()
+            .enqueueUniqueWork(
+                "sync_on_network",
+                ExistingWorkPolicy.REPLACE,
+                syncRequest
+            )
+    }
     fun getFormattedTime(): String {
         val s = _seconds.value ?: 0
         val h = s / 3600

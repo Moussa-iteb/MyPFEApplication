@@ -14,29 +14,45 @@ class ProfileViewModel @Inject constructor(
     private val repository: UserRepository
 ) : ViewModel() {
 
-    private val _updateSuccess = MutableLiveData<Boolean>(false)
-    val updateSuccess: LiveData<Boolean> = _updateSuccess
-
-    private val _isLoading = MutableLiveData<Boolean>(false)
+    private val _isLoading = MutableLiveData(false)
     val isLoading: LiveData<Boolean> = _isLoading
+
+    private val _updateSuccess = MutableLiveData(false)
+    val updateSuccess: LiveData<Boolean> = _updateSuccess
 
     private val _error = MutableLiveData<String?>()
     val error: LiveData<String?> = _error
 
-    fun getUsername(): String = repository.getUsername()
-    fun getPhone(): String = repository.getPhone()
-    fun updateProfile(username: String, email: String, phone: String) {
+    private val _photoUrl = MutableLiveData<String?>(repository.getPhotoUrl())
+    val photoUrl: LiveData<String?> = _photoUrl
+
+    fun getPhone(): String     = repository.getPhone()
+    fun getPhotoUrl(): String? = repository.getPhotoUrl()
+    fun getUsername(): String  = repository.getUsername()
+    fun getEmail(): String     = repository.getEmail()
+
+    fun updateProfile(name: String, email: String, phone: String) {
         viewModelScope.launch {
             _isLoading.value = true
-            val success = repository.updateProfile(username, email, phone)
-            if (success) _updateSuccess.value = true
-            else _error.value = "Update failed"
-            _isLoading.value = false
+            _error.value = null
+            try {
+                val success = repository.updateProfile(name, email, phone)
+                if (success) {
+                    _updateSuccess.value = true
+                } else {
+                    _error.value = "Failed to update profile"
+                }
+            } catch (e: Exception) {
+                _error.value = "Error: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
         }
     }
 
     fun resetState() {
         _updateSuccess.value = false
         _error.value = null
+        _isLoading.value = false
     }
 }

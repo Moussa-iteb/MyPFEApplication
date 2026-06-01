@@ -15,15 +15,15 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.mypfeapplication.viewmodel.ForgotPasswordViewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 
 @Composable
 fun ForgotPasswordScreen(
-    viewModel: ForgotPasswordViewModel = viewModel(),
+    viewModel: ForgotPasswordViewModel = hiltViewModel(),
     onBack: () -> Unit,
     onPasswordResetSuccess: () -> Unit
-) {
+){
     val isLoading by viewModel.isLoading.observeAsState(false)
     val error by viewModel.error.observeAsState()
     val codeSent by viewModel.codeSent.observeAsState(false)
@@ -117,6 +117,19 @@ fun ForgotPasswordScreen(
 
         } else {
             // ── Step 2 : Code + New Password ──
+            val savedCode = viewModel.savedCode
+
+// في step 2 — فوق input الكود مباشرة
+            if (savedCode.isNotBlank()) {
+                Text(
+                    text = "Your code: $savedCode",
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF1a8a4a),
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
+            }
             Text(text = "Reset Code", modifier = Modifier.fillMaxWidth(), color = Color.Gray, fontSize = 14.sp)
             Spacer(modifier = Modifier.height(4.dp))
             OutlinedTextField(
@@ -182,7 +195,8 @@ fun ForgotPasswordScreen(
             }
 
             Button(
-                onClick = { viewModel.resetPassword(email, code, newPassword) },
+                // ← التغيير هنا فقط — نستخدم viewModel.savedEmail بدل email
+                onClick = { viewModel.resetPassword(code, newPassword) },
                 modifier = Modifier.fillMaxWidth().height(52.dp),
                 shape = RoundedCornerShape(30.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = GreenMain),

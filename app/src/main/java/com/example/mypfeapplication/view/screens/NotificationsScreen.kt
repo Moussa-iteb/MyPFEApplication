@@ -13,27 +13,23 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.mypfeapplication.model.AppNotification
+import com.example.mypfeapplication.viewmodel.NotificationViewModel
+import java.text.SimpleDateFormat
+import java.util.*
 
-data class NotificationItem(
-    val id: Int,
-    val title: String,
-    val message: String,
-    val isRead: Boolean = false
-)
+
 
 @Composable
 fun NotificationsScreen(
-    onBack: () -> Unit = {}
+    onBack: () -> Unit = {},
+    viewModel: NotificationViewModel = hiltViewModel()
 ) {
-    var notifications by remember {
-        mutableStateOf(
-            listOf(
-                NotificationItem(1, "RIDE ALERT", "Bike available nearby."),
-                NotificationItem(2, "RIDE ALERT", "Bike available nearby."),
-                NotificationItem(3, "RIDE ALERT", "Bike available nearby."),
-                NotificationItem(4, "RIDE ALERT", "Bike available nearby.")
-            )
-        )
+    val notifications by viewModel.notifications.collectAsState()
+
+    LaunchedEffect(Unit) {
+        viewModel.markAllAsRead()
     }
 
     Column(
@@ -41,10 +37,9 @@ fun NotificationsScreen(
             .fillMaxSize()
             .background(Color.White)
     ) {
-
         Spacer(modifier = Modifier.height(24.dp))
 
-        // ✅ Header
+        // Header
         Row(
             modifier = Modifier.padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -63,29 +58,34 @@ fun NotificationsScreen(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // ✅ Liste notifications
-        LazyColumn(
-            modifier = Modifier
-                .weight(1f)
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items(notifications) { notif ->
-                NotificationCard(notification = notif)
+        if (notifications.isEmpty()) {
+            Box(
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("🔔", fontSize = 48.sp)
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text("No notifications yet", color = Color.Gray, fontSize = 16.sp)
+                }
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier.weight(1f).padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(notifications) { notif ->
+                    NotificationCard(notification = notif)
+                }
             }
         }
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // ✅ Bouton Mark All As Read
         Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
             Button(
-                onClick = {
-                    notifications = notifications.map { it.copy(isRead = true) }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(54.dp),
+                onClick = { viewModel.markAllAsRead() },
+                modifier = Modifier.fillMaxWidth().height(54.dp),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = DarkGreen)
             ) {
@@ -101,15 +101,15 @@ fun NotificationsScreen(
 }
 
 @Composable
-fun NotificationCard(notification: NotificationItem) {
+fun NotificationCard(notification: AppNotification) {
+    val sdf = SimpleDateFormat("HH:mm · dd MMM", Locale.getDefault())
+    val time = sdf.format(Date(notification.timestamp))
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (notification.isRead)
-                Color.White
-            else
-                Color(0xFFE8F5E9)
+            containerColor = if (!notification.isRead) Color(0xFFE8F5E9) else Color.White
         ),
         elevation = CardDefaults.cardElevation(0.dp)
     ) {
@@ -120,12 +120,9 @@ fun NotificationCard(notification: NotificationItem) {
                     .padding(horizontal = 16.dp, vertical = 14.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // ✅ Icône cloche verte
                 Text(text = "🔔", fontSize = 24.sp)
-
                 Spacer(modifier = Modifier.width(16.dp))
-
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = notification.title,
                         fontSize = 15.sp,
@@ -133,18 +130,26 @@ fun NotificationCard(notification: NotificationItem) {
                         color = DarkGreen
                     )
                     Text(
-                        text = notification.message,
+                        text = notification.body,
                         fontSize = 13.sp,
                         color = Color.Gray
                     )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = time,
+                        fontSize = 11.sp,
+                        color = Color(0xFF2ECC71)
+                    )
+                }
+                if (!notification.isRead) {
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .background(Color(0xFF2ECC71), RoundedCornerShape(4.dp))
+                    )
                 }
             }
-
-            // ✅ Séparateur vert
-            HorizontalDivider(
-                color = Color(0xFFB8D4B8),
-                thickness = 1.dp
-            )
+            HorizontalDivider(color = Color(0xFFB8D4B8), thickness = 1.dp)
         }
     }
 }

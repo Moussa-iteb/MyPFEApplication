@@ -7,14 +7,20 @@ import androidx.lifecycle.viewModelScope
 import com.example.mypfeapplication.model.BikeData
 import com.example.mypfeapplication.model.ScanBikeResponse
 import com.example.mypfeapplication.model.ScanTripResponse
+import com.example.mypfeapplication.repository.NotificationRepository
 import com.example.mypfeapplication.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    private val repository: UserRepository
+    private val repository: UserRepository,
+    private val notificationRepository: NotificationRepository
 ) : ViewModel() {
 
     private val _username = MutableLiveData<String>()
@@ -57,6 +63,14 @@ class HomeViewModel @Inject constructor(
     private val _activeTripUserId = MutableLiveData<Int?>()
     val activeTripUserId: LiveData<Int?> = _activeTripUserId
 
+    private val _photoUrl = MutableLiveData<String?>(repository.getPhotoUrl())
+    val photoUrl: LiveData<String?> = _photoUrl
+
+    // ✅ Badge notifications — se met à jour automatiquement
+    val unreadNotificationCount: StateFlow<Int> = notificationRepository.notifications
+        .map { list -> list.count { !it.isRead } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
     init {
         loadUsername()
         checkActiveBike()
@@ -87,13 +101,13 @@ class HomeViewModel @Inject constructor(
     }
 
     fun onTabSelected(tab: Int) { _selectedTab.value = tab }
-    fun onViewHistory() { _showHistory.value = true }
-    fun onBackFromHistory() { _showHistory.value = false }
+    fun onViewHistory()         { _showHistory.value = true }
+    fun onBackFromHistory()     { _showHistory.value = false }
     fun setHasBike(value: Boolean) { _hasBike.value = value }
-    fun getUsername(): String = repository.getUsername()
-    fun getBikeId(): String = _assignedBike.value?.id?.toString() ?: ""
+    fun getUsername(): String   = repository.getUsername()
+    fun getBikeId(): String     = _assignedBike.value?.id?.toString() ?: ""
     fun getBatteryLevel(): Float = _assignedBike.value?.batteryLevel?.toFloat() ?: 0f
-    fun getToken(): String? = repository.getToken()
+    fun getToken(): String?     = repository.getToken()
 
     fun logout() {
         _hasBike.value = false
@@ -119,7 +133,6 @@ class HomeViewModel @Inject constructor(
 
     fun clearScanResult() { _scanResult.value = null }
 
-    // ✅ Une seule fonction onTripScanned
     fun onTripScanned(qrCode: String) {
         viewModelScope.launch {
             _isScanningTrip.value = true
@@ -130,25 +143,30 @@ class HomeViewModel @Inject constructor(
                 _hasTrip.value = true
                 _activeTripUserId.value = result.data?.id
                 result.data?.id?.let { repository.saveTripUserId(it) }
-
             }
             _isScanningTrip.value = false
         }
     }
 
     fun clearScanTripResult() { _scanTripResult.value = null }
+
     fun cancelTrip(onSuccess: () -> Unit = {}) {
         viewModelScope.launch {
             val success = repository.cancelTrip()
             if (success) {
                 _hasTrip.value = false
                 _activeTripUserId.value = null
-                _hasBike.value = false        // ✅ reset bike aussi
-                _assignedBike.value = null    // ✅ retourne à l'interface scan
+                _hasBike.value = false
+                _assignedBike.value = null
                 onSuccess()
             }
         }
     }
+
+    fun refreshPhotoUrl() {
+        _photoUrl.value = repository.getPhotoUrl()
+    }
+
     fun returnBike(onSuccess: () -> Unit = {}) {
         viewModelScope.launch {
             val success = repository.returnBike()

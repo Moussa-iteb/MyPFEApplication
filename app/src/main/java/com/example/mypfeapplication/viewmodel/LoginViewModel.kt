@@ -1,18 +1,22 @@
 package com.example.mypfeapplication.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.mypfeapplication.model.AuthResponse
+import com.example.mypfeapplication.repository.NotificationRepository
 import com.example.mypfeapplication.repository.UserRepository
+import com.google.firebase.messaging.FirebaseMessaging
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class LoginViewModel @Inject constructor(
-    private val repository: UserRepository
+    private val repository: UserRepository,
+    private val notificationRepository: NotificationRepository
 ) : ViewModel() {
 
     private val _authResponse = MutableLiveData<AuthResponse?>()
@@ -43,11 +47,18 @@ class LoginViewModel @Inject constructor(
                 if (role == "admin") {
                     _adminError.value = true
                 } else {
-                    result.data?.token?.let { repository.saveToken(it) }
-                    result.data?.user?.role?.let { repository.saveRole(it) }
+                    val token = result.data?.token
+                    token?.let { repository.saveToken(it) }
+                    result.data?.user?.role?.let     { repository.saveRole(it) }
                     result.data?.user?.username?.let { repository.saveUsername(it) }
-                    result.data?.user?.id?.let { repository.saveUserId(it) }
-                    result.data?.user?.email?.let { repository.saveEmail(it) }
+                    result.data?.user?.email?.let    { repository.saveEmail(it) }
+                    result.data?.user?.id?.let {
+                        repository.saveUserId(it)
+                        notificationRepository.setCurrentUserId(it)
+                        Log.d("FCM", "✅ currentUserId set to $it")
+                    }
+
+                    token?.let { saveFcmToken(it) }
                     _authResponse.value = result
                 }
             } else {
@@ -57,11 +68,23 @@ class LoginViewModel @Inject constructor(
         }
     }
 
-    fun showAdminError() {
-        _adminError.value = true
+    private fun saveFcmToken(userToken: String) {
+        FirebaseMessaging.getInstance().token
+            .addOnSuccessListener { fcmToken ->
+                viewModelScope.launch {
+                    try {
+                        repository.saveFcmToken(userToken, fcmToken)
+                        Log.d("FCM", "✅ Token saved: $fcmToken")
+                    } catch (e: Exception) {
+                        Log.e("FCM", "❌ Failed: ${e.message}")
+                    }
+                }
+            }
+            .addOnFailureListener { e ->
+                Log.e("FCM", "❌ Failed to get token: ${e.message}")
+            }
     }
 
-    fun clearAdminError() {
-        _adminError.value = false
-    }
+    fun showAdminError() { _adminError.value = true }
+    fun clearAdminError() { _adminError.value = false }
 }

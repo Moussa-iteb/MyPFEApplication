@@ -7,11 +7,10 @@ import com.example.mypfeapplication.model.ScanBikeRequest
 import com.example.mypfeapplication.model.ScanBikeResponse
 import com.example.mypfeapplication.model.ScanTripRequest
 import com.example.mypfeapplication.model.ScanTripResponse
-import com.example.mypfeapplication.model.TripDetailsResponse
 import com.example.mypfeapplication.model.TripItem
-import com.example.mypfeapplication.model.AllTripsResponse
 import com.example.mypfeapplication.model.UserTripData
 import com.example.mypfeapplication.network.ApiClient
+import com.example.mypfeapplication.network.ApiService
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -47,13 +46,17 @@ class UserRepository @Inject constructor(
         return try {
             val response = apiService.forgotPasswordUser(mapOf("email" to email))
             when {
-                response.isSuccessful  -> Pair(true,  "Code sent successfully")
+                response.isSuccessful -> {
+                    val body = response.body()
+                    val code = body?.get("code")?.toString() ?: ""
+                    Pair(true, code)
+                }
                 response.code() == 404 -> Pair(false, "Email not found")
                 response.code() == 403 -> Pair(false, "Access denied")
-                else                   -> Pair(false, "Error: ${response.code()}")
+                else -> Pair(false, "Error: ${response.code()}")
             }
         } catch (e: java.net.SocketTimeoutException) {
-            Pair(true, "Code sent — check your email")
+            Pair(true, "")
         } catch (e: Exception) {
             Pair(false, e.message ?: "Connection error")
         }
@@ -117,17 +120,34 @@ class UserRepository @Inject constructor(
             val userId = getUserId()
             if (userId == -1) return false
 
+            val body = mutableMapOf("username" to username, "email" to email)
+            if (phone.isNotBlank()) body["phone"] = phone
+
             val response = apiService.updateUser(
                 token  = "Bearer $token",
                 userId = userId,
-                body   = mapOf("username" to username, "email" to email, "phone" to phone)
+                body   = body
             )
             if (response.isSuccessful) {
                 saveUsername(username)
-                savePhone(phone)
+                saveEmail(email)
+                if (phone.isNotBlank()) savePhone(phone)
             }
             response.isSuccessful
         } catch (e: Exception) { false }
+    }
+
+    // ✅ FCM Token — sauvegarde le token Firebase après login
+    suspend fun saveFcmToken(userToken: String, fcmToken: String) {
+        try {
+            apiService.saveFcmToken(
+                token = "Bearer $userToken",
+                body  = ApiService.FcmTokenRequest(fcmToken = fcmToken)
+            )
+            android.util.Log.d("FCM", "✅ FCM token saved to backend")
+        } catch (e: Exception) {
+            android.util.Log.e("FCM", "❌ saveFcmToken error: ${e.message}")
+        }
     }
 
     // ─── Bike ─────────────────────────────────────────────────────────────────
@@ -189,7 +209,7 @@ class UserRepository @Inject constructor(
 
     suspend fun fetchAndSaveActiveTrip() {
         try {
-            val token = getToken() ?: return
+            val token  = getToken() ?: return
             val userId = getUserId()
 
             val response = ApiClient.apiService.getMyActiveTrip("Bearer $token")
@@ -219,26 +239,38 @@ class UserRepository @Inject constructor(
 
     suspend fun getUserTrips(): List<UserTripData> {
         return try {
-            val token  = getToken()  ?: return emptyList()
+            val token  = getToken()
             val userId = getUserId()
-            if (userId == -1) return emptyList()
+
+            android.util.Log.d("TRIPS_DEBUG", "token=${token?.take(20)}, userId=$userId")
+
+            if (token == null) return emptyList()
+            if (userId == -1)  return emptyList()
 
             val response = ApiClient.apiService.getUserTrips(
                 token  = "Bearer $token",
                 userId = userId
             )
 
+            android.util.Log.d("TRIPS_DEBUG", "response code=${response.code()}")
+
             if (response.isSuccessful) {
                 val allTrips = response.body()?.data ?: emptyList()
-                allTrips.mapNotNull { trip ->
+                android.util.Log.d("TRIPS_DEBUG", "allTrips size=${allTrips.size}")
+
+                val filtered = allTrips.mapNotNull { trip ->
                     val myTripUser = trip.tripUsers?.find { it.userId == userId }
-                    if (myTripUser != null) {
-                        trip.copy(tripUsers = listOf(myTripUser))
-                    } else null
+                    if (myTripUser != null) trip.copy(tripUsers = listOf(myTripUser)) else null
                 }
-            } else emptyList()
+
+                android.util.Log.d("TRIPS_DEBUG", "filtered size=${filtered.size}")
+                filtered
+            } else {
+                android.util.Log.e("TRIPS_DEBUG", "HTTP error=${response.code()}")
+                emptyList()
+            }
         } catch (e: Exception) {
-            android.util.Log.e("TRIPS", "getUserTrips error: ${e.message}")
+            android.util.Log.e("TRIPS_DEBUG", "exception=${e.message}")
             emptyList()
         }
     }
@@ -284,7 +316,6 @@ class UserRepository @Inject constructor(
                 json.getInt("bikeId") else bikeId
 
             val currentUserId = getUserId()
-
             saveTripUserId(-1)
             saveTripId(tripId)
 
@@ -293,10 +324,7 @@ class UserRepository @Inject constructor(
             val response = ApiClient.apiService.joinTrip(
                 token  = "Bearer $token",
                 tripId = tripId,
-                body   = ScanTripRequest(
-                    userId = currentUserId,
-                    bikeId = bikeIdToUse
-                )
+                body   = ScanTripRequest(userId = currentUserId, bikeId = bikeIdToUse)
             )
 
             val rawError = if (!response.isSuccessful) {
@@ -304,8 +332,6 @@ class UserRepository @Inject constructor(
                     android.util.Log.e("SCAN_TRIP", "HTTP ${response.code()} RAW ERROR: $err")
                 }
             } else null
-
-            android.util.Log.d("SCAN_TRIP", "Response: ${response.code()}")
 
             when {
                 response.isSuccessful -> {
@@ -318,23 +344,19 @@ class UserRepository @Inject constructor(
                 }
 
                 response.code() == 409 -> {
-                    android.util.Log.d("SCAN_TRIP", "409 — fetching existing tripUserId from server...")
+                    android.util.Log.d("SCAN_TRIP", "409 — fetching existing tripUserId...")
                     try {
                         val detailsResponse = ApiClient.apiService.getTripDetails(
                             token  = "Bearer $token",
                             tripId = tripId
                         )
                         if (detailsResponse.isSuccessful) {
-                            val tripUsers = detailsResponse.body()?.data?.tripUsers
-                            val found = tripUsers?.find { it.userId == currentUserId }
+                            val found = detailsResponse.body()?.data?.tripUsers
+                                ?.find { it.userId == currentUserId }
                             if (found != null) {
                                 saveTripUserId(found.id)
                                 android.util.Log.d("SCAN_TRIP", "✅ Found existing tripUserId=${found.id}")
-                            } else {
-                                android.util.Log.e("SCAN_TRIP", "❌ userId=$currentUserId not found in tripUsers")
                             }
-                        } else {
-                            android.util.Log.e("SCAN_TRIP", "getTripDetails failed: ${detailsResponse.code()}")
                         }
                     } catch (e: Exception) {
                         android.util.Log.e("SCAN_TRIP", "Failed to fetch tripDetails: ${e.message}")
@@ -343,31 +365,23 @@ class UserRepository @Inject constructor(
                 }
 
                 response.code() == 400 -> {
-                    val msg = try {
-                        JSONObject(rawError ?: "").getString("message")
-                    } catch (e: Exception) { "Bad request" }
-                    android.util.Log.e("SCAN_TRIP", "400: $msg")
+                    val msg = try { JSONObject(rawError ?: "").getString("message") }
+                    catch (e: Exception) { "Bad request" }
                     ScanTripResponse(false, msg, null)
                 }
 
-                response.code() == 404 -> {
-                    android.util.Log.e("SCAN_TRIP", "404 Trip not found, tripId=$tripId")
+                response.code() == 404 ->
                     ScanTripResponse(false, "Trip #$tripId not found", null)
-                }
 
                 response.code() == 500 -> {
-                    val msg = try {
-                        JSONObject(rawError ?: "").optString("message", "Internal server error")
-                    } catch (e: Exception) { "Internal server error" }
-                    android.util.Log.e("SCAN_TRIP", "500: $rawError")
+                    val msg = try { JSONObject(rawError ?: "").optString("message", "Internal server error") }
+                    catch (e: Exception) { "Internal server error" }
                     ScanTripResponse(false, "Server error: $msg", null)
                 }
 
                 else -> {
-                    val msg = try {
-                        JSONObject(rawError ?: "").getString("message")
-                    } catch (e: Exception) { "Error ${response.code()}" }
-                    android.util.Log.e("SCAN_TRIP", "Error ${response.code()}: $msg")
+                    val msg = try { JSONObject(rawError ?: "").getString("message") }
+                    catch (e: Exception) { "Error ${response.code()}" }
                     ScanTripResponse(false, msg, null)
                 }
             }
@@ -382,20 +396,11 @@ class UserRepository @Inject constructor(
         return try {
             val token  = getToken()  ?: return false
             val tripId = getTripId()
-            if (tripId == -1) {
-                android.util.Log.e("TRIP", "startTrip: tripId not found in prefs")
-                return false
-            }
+            if (tripId == -1) return false
 
             android.util.Log.d("TRIP", "Starting trip #$tripId")
             val response = ApiClient.apiService.startTrip("Bearer $token", tripId)
             android.util.Log.d("TRIP", "Start trip response: ${response.code()}")
-
-            if (!response.isSuccessful) {
-                val err = response.errorBody()?.string()
-                android.util.Log.e("TRIP", "Start trip error body: $err")
-            }
-
             response.isSuccessful
         } catch (e: Exception) {
             android.util.Log.e("TRIP", "Start error: ${e.message}")
@@ -404,29 +409,29 @@ class UserRepository @Inject constructor(
     }
 
     suspend fun endTrip(lat: Double, lng: Double): Boolean {
-        return try {
-            val token  = getToken()  ?: return false
-            val tripId = getTripId()
-            if (tripId == -1) {
-                android.util.Log.e("TRIP", "endTrip: tripId not found in prefs")
-                return false
-            }
+        val tripId = getTripId()
+        if (tripId == -1) return false
 
-            android.util.Log.d("TRIP", "Ending trip #$tripId at ($lat, $lng)")
+        savePendingEndTrip(lat, lng)
+
+        return try {
+            val token = getToken() ?: return false
             val response = ApiClient.apiService.endTrip(
                 "Bearer $token", tripId,
                 mapOf("end_point_lat" to lat, "end_point_lng" to lng)
             )
-            android.util.Log.d("TRIP", "End trip response: ${response.code()}")
-
-            if (!response.isSuccessful) {
-                val err = response.errorBody()?.string()
-                android.util.Log.e("TRIP", "End trip error body: $err")
+            if (response.isSuccessful) {
+                clearPendingEndTrip()
+                saveTripId(-1)
+                saveTripUserId(-1)
+                android.util.Log.d("TRIP", "✅ endTrip success, tripId=$tripId")
+                true
+            } else {
+                android.util.Log.e("TRIP", "❌ endTrip HTTP ${response.code()}")
+                false
             }
-
-            response.isSuccessful
         } catch (e: Exception) {
-            android.util.Log.e("TRIP", "End error: ${e.message}")
+            android.util.Log.e("TRIP", "❌ offline — pending saved in prefs")
             false
         }
     }
@@ -447,13 +452,7 @@ class UserRepository @Inject constructor(
                 tripUserId = tripUserId,
                 body       = mapOf("latitude" to lat, "longitude" to lng)
             )
-            android.util.Log.d("TRACKING", "Sent point ($lat, $lng) for tripUser=$tripUserId → ${response.code()}")
-
-            if (!response.isSuccessful) {
-                val err = response.errorBody()?.string()
-                android.util.Log.e("TRACKING", "Tracking error body: $err")
-            }
-
+            android.util.Log.d("TRACKING", "Sent ($lat,$lng) → ${response.code()}")
             response.isSuccessful
         } catch (e: Exception) {
             android.util.Log.e("TRACKING", "Error: ${e.message}")
@@ -470,18 +469,10 @@ class UserRepository @Inject constructor(
             val response = ApiClient.apiService.getAllTrips("Bearer $token")
             if (response.isSuccessful) {
                 val all = response.body()?.data ?: emptyList()
-                // ← زيد هذا باش نشوف البيانات
-                all.forEach { trip ->
-                    android.util.Log.d("TRIP_RAW",
-                        "Trip#${trip.id} status='${trip.status}' | " +
-                                "tripUsers=${trip.tripUsers?.map { "userId=${it.userId} status=${it.status}" }}"
-                    )
+                all.filter { trip ->
+                    trip.tripUsers?.none { it.userId == userId } == true
                 }
-                all // ← مؤقتاً رجّع كل شي بدون filter
-            } else {
-                android.util.Log.e("EXPLORE", "HTTP ${response.code()}")
-                emptyList()
-            }
+            } else emptyList()
         } catch (e: Exception) {
             android.util.Log.e("EXPLORE", "error: ${e.message}")
             emptyList()
@@ -508,12 +499,47 @@ class UserRepository @Inject constructor(
     fun getPhone(): String           = prefs.getString("phone", "") ?: ""
     fun savePhone(phone: String)     = prefs.edit().putString("phone", phone).apply()
 
+    fun getPhotoUrl(): String?       = prefs.getString("photoUrl", null)
+    fun savePhotoUrl(url: String)    = prefs.edit().putString("photoUrl", url).apply()
+
     fun getTripId(): Int             = prefs.getInt("tripId", -1)
     fun saveTripId(id: Int)          = prefs.edit().putInt("tripId", id).apply()
 
     fun getTripUserId(): Int         = prefs.getInt("tripUserId", -1)
     fun saveTripUserId(id: Int)      = prefs.edit().putInt("tripUserId", id).apply()
 
-    fun logout()                     = prefs.edit().clear().apply()
+    fun logout() {
+        prefs.edit()
+            .remove("token")
+            .remove("role")
+            .remove("userId")
+            .remove("tripId")
+            .remove("tripUserId")
+            .remove("pending_end_lat")
+            .remove("pending_end_lng")
+            .remove("has_pending_end")
+            .apply()
+    }
 
+    // ─── Pending End Trip ─────────────────────────────────────────────────────
+
+    fun savePendingEndTrip(lat: Double, lng: Double) {
+        prefs.edit()
+            .putFloat("pending_end_lat", lat.toFloat())
+            .putFloat("pending_end_lng", lng.toFloat())
+            .putBoolean("has_pending_end", true)
+            .commit()
+    }
+
+    fun hasPendingEndTrip(): Boolean   = prefs.getBoolean("has_pending_end", false)
+    fun getPendingEndTripLat(): Double = prefs.getFloat("pending_end_lat", 0f).toDouble()
+    fun getPendingEndTripLng(): Double = prefs.getFloat("pending_end_lng", 0f).toDouble()
+
+    fun clearPendingEndTrip() {
+        prefs.edit()
+            .remove("pending_end_lat")
+            .remove("pending_end_lng")
+            .putBoolean("has_pending_end", false)
+            .commit()
+    }
 }

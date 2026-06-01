@@ -33,19 +33,21 @@ fun HomeScreen(
     onNotifications: () -> Unit = {},
     onScanQr: () -> Unit = {}
 ) {
-    val username by viewModel.username.observeAsState("User")
-    val hasBike by viewModel.hasBike.observeAsState(false)
-    val selectedTab by viewModel.selectedTab.observeAsState(0)
-    val showHistory by viewModel.showHistory.observeAsState(false)
-    val assignedBike by viewModel.assignedBike.observeAsState()
-    val email by viewModel.email.observeAsState("")
+    val photoUrl      by viewModel.photoUrl.observeAsState(null)
+    val username      by viewModel.username.observeAsState("User")
+    val hasBike       by viewModel.hasBike.observeAsState(false)
+    val selectedTab   by viewModel.selectedTab.observeAsState(0)
+    val showHistory   by viewModel.showHistory.observeAsState(false)
+    val assignedBike  by viewModel.assignedBike.observeAsState()
+    val email         by viewModel.email.observeAsState("")
+    val isLoading     by viewModel.isLoading.observeAsState(true)
 
-    // ✅ Observer isLoading
-    val isLoading by viewModel.isLoading.observeAsState(true)
+    // ✅ Badge notifications réel
+    val unreadCount   by viewModel.unreadNotificationCount.collectAsState()
 
     val context = LocalContext.current
     val locationTracker = remember { LocationTracker(context) }
-    val currentAddress by locationTracker.currentAddress.collectAsState()
+    val currentAddress  by locationTracker.currentAddress.collectAsState()
     val currentLocation by locationTracker.currentLocation.collectAsState()
 
     val permissions = remember {
@@ -69,6 +71,10 @@ fun HomeScreen(
         }
     }
 
+    LaunchedEffect(selectedTab) {
+        if (selectedTab == 0) viewModel.refreshPhotoUrl()
+    }
+
     DisposableEffect(Unit) {
         onDispose { locationTracker.stopTracking() }
     }
@@ -78,7 +84,6 @@ fun HomeScreen(
         return
     }
 
-    // ✅ Affiche un spinner pendant que l'API check le bike
     if (isLoading) {
         Box(
             modifier = Modifier
@@ -86,9 +91,7 @@ fun HomeScreen(
                 .background(Color(0xFFF0FBF6)),
             contentAlignment = Alignment.Center
         ) {
-            CircularProgressIndicator(
-                color = Color(0xFF2E7D32)
-            )
+            CircularProgressIndicator(color = Color(0xFF2E7D32))
         }
         return
     }
@@ -147,9 +150,11 @@ fun HomeScreen(
                     .fillMaxSize()
                     .padding(paddingValues)
             ) {
+                // ✅ notificationCount connecté au vrai unreadCount
                 HomeHeader(
                     username = username,
-                    notificationCount = 3,
+                    photoUrl = photoUrl,
+                    notificationCount = unreadCount,
                     onNotifications = onNotifications
                 )
 
@@ -175,7 +180,6 @@ fun HomeScreen(
                         username = username,
                         email = email,
                         onChangePassword = onChangePassword,
-                        onNotifications = onNotifications,
                         onLogout = {
                             viewModel.logout()
                             onLogout()

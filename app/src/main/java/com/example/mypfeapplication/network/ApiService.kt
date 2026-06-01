@@ -10,6 +10,10 @@ import com.example.mypfeapplication.model.ScanTripResponse
 import com.example.mypfeapplication.model.TripDetailsResponse
 import com.example.mypfeapplication.model.UserTripsResponse
 import com.example.mypfeapplication.model.AllTripsResponse
+import okhttp3.MultipartBody
+import retrofit2.http.Multipart
+import retrofit2.http.Part
+import com.example.mypfeapplication.model.PhotoUploadResponse
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
@@ -27,7 +31,7 @@ interface ApiService {
     suspend fun register(@Body request: RegisterRequest): Response<AuthResponse>
 
     @POST("auth/forgot-password/user")
-    suspend fun forgotPasswordUser(@Body body: Map<String, String>): Response<Any>
+    suspend fun forgotPasswordUser(@Body body: Map<String, String>): Response<Map<String, Any>>
 
     @POST("auth/reset-password/user")
     suspend fun resetPasswordUser(@Body body: Map<String, String>): Response<Any>
@@ -44,6 +48,15 @@ interface ApiService {
         @Path("id") userId: Int,
         @Body body: Map<String, String>
     ): Response<Any>
+    // FcmTokenRequest.kt
+    data class FcmTokenRequest(val fcmToken: String)
+
+    // Dans ton ApiService.kt — ajoute :
+    @POST("users/fcm-token")
+    suspend fun saveFcmToken(
+        @Header("Authorization") token: String,
+        @Body body: FcmTokenRequest
+    ): Response<Unit>
 
     @PUT("users/{id}/password")
     suspend fun changePassword(
@@ -55,8 +68,9 @@ interface ApiService {
     suspend fun addTrackingPoint(
         @Header("Authorization") token: String,
         @Path("tripUserId") tripUserId: Int,
-        @Body body: Map<String, @JvmSuppressWildcards Any>
+        @Body body: @JvmSuppressWildcards Map<String, Any>  // ← نفس الشي
     ): Response<Any>
+
     @POST("bike-assignments/scan")
     suspend fun scanBike(
         @Header("Authorization") token: String,
@@ -92,7 +106,7 @@ interface ApiService {
     suspend fun endTrip(
         @Header("Authorization") token: String,
         @Path("id") tripId: Int,
-        @Body body: Map<String, @JvmSuppressWildcards Any>
+        @Body body: @JvmSuppressWildcards Map<String, Any>  // ← حط الـ annotation قبل Map
     ): Response<Any>
     @GET("trips/user/{userId}")
     suspend fun getUserTrips(
@@ -103,5 +117,12 @@ interface ApiService {
     suspend fun getAllTrips(
         @Header("Authorization") token: String
     ): Response<AllTripsResponse>
+    @Multipart
+    @POST("users/profile/photo")
+    suspend fun uploadProfilePhoto(
+        @Header("Authorization") token: String,
+        @Part photo: MultipartBody.Part
+    ): Response<PhotoUploadResponse>
+
 
 }
